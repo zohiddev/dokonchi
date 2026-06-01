@@ -1,0 +1,153 @@
+import { useInventory, useInventoryValuation } from '../api/inventory';
+import { Card, CardBody } from '../components/ui/Card';
+import { DataTable, type Column } from '../components/ui/DataTable';
+import { money, qty } from '../lib/format';
+import type { InventoryRow } from '../types/api';
+
+export function InventoryPage() {
+  const inventory = useInventory();
+  const valuation = useInventoryValuation();
+
+  const columns: Column<InventoryRow>[] = [
+    {
+      key: 'name',
+      header: 'Mahsulot',
+      render: (r) => (
+        <div>
+          <strong>{r.name}</strong>
+          <small style={{ display: 'block', color: 'var(--ink-soft)' }}>{r.category.name}</small>
+        </div>
+      ),
+    },
+    {
+      key: 'unit',
+      header: 'Birlik',
+      render: (r) => r.baseUnit.toLowerCase(),
+      width: '80px',
+    },
+    {
+      key: 'batches',
+      header: 'Partiyalar',
+      render: (r) => (
+        <span className="num" style={{ color: r.activeBatchCount > 0 ? 'var(--ink)' : 'var(--ink-faint)' }}>
+          {r.activeBatchCount}
+        </span>
+      ),
+      align: 'center',
+      width: '100px',
+    },
+    {
+      key: 'remaining',
+      header: 'Qoldiq',
+      render: (r) => (
+        <span className="num" style={{
+          fontWeight: 600,
+          color: Number(r.totalRemaining) > 0 ? 'var(--ink)' : 'var(--brick)',
+        }}>
+          {qty(r.totalRemaining, r.baseUnit)}
+        </span>
+      ),
+      align: 'right',
+      width: '130px',
+    },
+    {
+      key: 'avgCost',
+      header: "O'rtacha tannarx",
+      render: (r) =>
+        r.avgCost ? (
+          <span className="num">{money(r.avgCost, false)}</span>
+        ) : (
+          <small style={{ color: 'var(--ink-faint)' }}>—</small>
+        ),
+      align: 'right',
+      width: '160px',
+    },
+    {
+      key: 'price',
+      header: 'Sotuv narxi',
+      render: (r) =>
+        r.currentSalePrice ? (
+          <span className="num">{money(r.currentSalePrice, false)}</span>
+        ) : (
+          <small style={{ color: 'var(--ink-faint)' }}>—</small>
+        ),
+      align: 'right',
+      width: '150px',
+    },
+  ];
+
+  return (
+    <div className="inv-page">
+      <div className="inv-summary">
+        <Card>
+          <CardBody>
+            <div className="info-block">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" />
+              </svg>
+              <div>
+                <strong>FIFO mantiqi</strong>
+                <p>
+                  Sotuv har doim <strong>eng eski</strong> partiyadan ayriladi.
+                  Quyidagi "o'rtacha tannarx" — qoldiqlar bo'yicha vaznli o'rtacha (Σ(qoldiq × tannarx) / Σ qoldiq).
+                </p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <div className="value-block">
+              <small>OMBOR QIYMATI</small>
+              <strong className="serif num">{money(valuation.data?.totalValue ?? 0)}</strong>
+              <small>{valuation.data?.batchCount ?? 0} ta faol partiya</small>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card padding={false}>
+        <DataTable
+          columns={columns}
+          data={inventory.data}
+          rowKey={(r) => r.productId}
+          isLoading={inventory.isLoading}
+          emptyTitle="Ombor bo'sh"
+        />
+      </Card>
+
+      <style>{`
+        .inv-page { display: flex; flex-direction: column; gap: 16px; }
+        .inv-summary { display: grid; grid-template-columns: 1.7fr 1fr; gap: 14px; }
+        .info-block {
+          display: flex; gap: 12px;
+          color: var(--ink-soft);
+        }
+        .info-block svg {
+          width: 22px; height: 22px;
+          color: var(--green-2); flex-shrink: 0; margin-top: 2px;
+        }
+        .info-block strong {
+          color: var(--ink); font-size: 14px; font-weight: 600;
+          display: block; margin-bottom: 3px;
+        }
+        .info-block p { font-size: 13px; line-height: 1.5; }
+        .value-block {
+          display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+        }
+        .value-block small:first-child {
+          font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px;
+          color: var(--ink-soft); font-weight: 600;
+        }
+        .value-block strong {
+          font-size: 26px; color: var(--green); letter-spacing: -.3px;
+        }
+        .value-block small:last-child { color: var(--ink-faint); font-size: 12px; }
+        @media (max-width: 880px) {
+          .inv-summary { grid-template-columns: 1fr; }
+        }
+      `}</style>
+    </div>
+  );
+}
