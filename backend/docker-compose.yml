@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dokonchi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dokonchi
+      POSTGRES_PASSWORD: dokonchi
+      POSTGRES_DB: dokonchi
+    ports:
+      - "5433:5432"
+    volumes:
+      - dokonchi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dokonchi -d dokonchi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dokonchi_pgdata:

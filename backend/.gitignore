@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# Prisma
+/generated/prisma
+
+# Logs
+*.log
