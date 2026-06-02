@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { useBatchAttention } from '../api/batches';
 import { useSales } from '../api/sales';
 import { useDashboard, useSalesTimeseries } from '../api/reports';
-import { BarChart } from '../components/ui/BarChart';
 import { Card, CardBody, CardHead } from '../components/ui/Card';
+import { SimpleBarChart } from '../components/ui/Charts';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { EmptyState } from '../components/ui/EmptyState';
 import { KpiCard } from '../components/ui/KpiCard';
@@ -92,10 +92,9 @@ export function DashboardPage() {
           <CardHead title="Haftalik savdo" subtitle="So'nggi 7 kun" />
           <CardBody>
             {timeseries.data && (
-              <BarChart
+              <SimpleBarChart
                 data={timeseries.data.map((p) => ({ label: p.label, value: Number(p.total) }))}
-                height={200}
-                formatValue={(v) => money(v, false)}
+                height={210}
               />
             )}
           </CardBody>
