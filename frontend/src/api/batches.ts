@@ -42,6 +42,7 @@ export function useCreateBatch() {
       qc.invalidateQueries({ queryKey: ['batches'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['cash'] }); // partiya xaridi → kassa chiqimi
     },
   });
 }

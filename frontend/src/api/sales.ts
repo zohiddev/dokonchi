@@ -55,6 +55,7 @@ export function useCreateSale() {
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['debts'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['cash'] }); // NAQD/KARTA sotuv → kassa kirimi
     },
   });
 }
