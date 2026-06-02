@@ -12,6 +12,7 @@ import { StatusPill } from '../components/ui/Tag';
 import { StockBar } from '../components/ui/StockBar';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
+import { dateOnlyToIso } from '../lib/date';
 import { date, money } from '../lib/format';
 import type { Batch } from '../types/api';
 
@@ -153,7 +154,7 @@ export function BatchesPage() {
             await createBatch.mutateAsync({
               productId: Number(v.productId),
               supplierId: v.supplierId ? Number(v.supplierId) : undefined,
-              receivedDate: v.receivedDate,
+              receivedDate: dateOnlyToIso(v.receivedDate),
               quantityReceived: Number(v.quantityReceived),
               costPricePerUnit: Number(v.costPricePerUnit),
               salePricePerUnit: v.salePricePerUnit ? Number(v.salePricePerUnit) : undefined,
