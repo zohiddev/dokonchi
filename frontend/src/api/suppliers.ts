@@ -23,3 +23,20 @@ export function useCreateSupplier() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
   });
 }
+
+export function useUpdateSupplier() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...rest }: CreateSupplierPayload & { id: number }) =>
+      (await api.patch<Supplier>(`/suppliers/${id}`, rest)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+  });
+}
+
+export function useDeleteSupplier() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => (await api.delete(`/suppliers/${id}`)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+  });
+}
