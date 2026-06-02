@@ -1,10 +1,15 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { NewSaleProvider, useNewSale } from '../NewSaleContext';
+import { BottomNav } from './BottomNav';
+import { MobileMenuDrawer } from './MobileMenuDrawer';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
 function LayoutInner() {
   const { open } = useNewSale();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <div className="app-shell">
       <Sidebar />
@@ -14,6 +19,10 @@ function LayoutInner() {
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile-only */}
+      <BottomNav onMore={() => setDrawerOpen(true)} moreActive={drawerOpen} />
+      <MobileMenuDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       <style>{`
         .app-shell {
@@ -30,8 +39,12 @@ function LayoutInner() {
           padding: 26px 30px 50px;
           flex: 1;
         }
-        @media (max-width: 780px) {
-          .app-content { padding: 18px; }
+        @media (max-width: 880px) {
+          .app-content {
+            padding: 16px 14px;
+            /* BottomNav uchun joy qoldirish */
+            padding-bottom: calc(90px + env(safe-area-inset-bottom));
+          }
         }
       `}</style>
     </div>

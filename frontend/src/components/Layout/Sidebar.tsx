@@ -15,7 +15,10 @@ interface NavItemDef extends NavItem {
 const NAV: NavItemDef[] = [
   { to: '/', label: 'Boshqaruv paneli', icon: <IconHome /> },
   { to: '/sales', label: 'Sotuvlar', icon: <IconCart /> },
+  { to: '/cash', label: 'Kassa', icon: <IconCashRegister /> },
+  { to: '/expenses', label: 'Xarajatlar', icon: <IconReceipt /> },
   { to: '/batches', label: 'Partiyalar', icon: <IconBox /> },
+  { to: '/suppliers', label: "Ta'minotchilar", icon: <IconTruck /> },
   { to: '/inventory', label: 'Ombor', icon: <IconWarehouse /> },
   { to: '/products', label: 'Mahsulotlar', icon: <IconTag /> },
   { to: '/customers', label: 'Mijozlar', icon: <IconUserCircle /> },
@@ -120,8 +123,7 @@ export function Sidebar() {
         .logout-btn:hover { color: #fbf8f1; background: rgba(255,255,255,.06); }
         .logout-btn svg { width: 18px; height: 18px; stroke-width: 1.7; }
         @media (max-width: 880px) {
-          .sidebar { position: fixed; transform: translateX(-100%); transition: transform .25s; z-index: 100; }
-          .sidebar.open { transform: translateX(0); }
+          .sidebar { display: none; }
         }
       `}</style>
     </aside>
@@ -186,6 +188,33 @@ function IconChart() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" />
       <path d="M7 14l4-4 4 4 5-7" />
+    </svg>
+  );
+}
+function IconReceipt() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 3l1 1.5L6 3l1 1.5L8 3l1 1.5L10 3l1 1.5L12 3l1 1.5L14 3l1 1.5L16 3l1 1.5L18 3l1 1.5L20 3v18l-1-1.5L18 21l-1-1.5L16 21l-1-1.5L14 21l-1-1.5L12 21l-1-1.5L10 21l-1-1.5L8 21l-1-1.5L6 21l-1-1.5L4 21z" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  );
+}
+function IconCashRegister() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="10" width="18" height="11" rx="2" />
+      <path d="M5 10V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4" />
+      <path d="M7 14h2M11 14h2M15 14h2M7 18h10" />
+    </svg>
+  );
+}
+function IconTruck() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 3h15v13H1z" />
+      <path d="M16 8h4l3 3v5h-7" />
+      <circle cx="6" cy="19" r="2" />
+      <circle cx="18" cy="19" r="2" />
     </svg>
   );
 }
