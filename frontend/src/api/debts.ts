@@ -32,8 +32,17 @@ export function usePayDebt() {
       qc.invalidateQueries({ queryKey: ['debts'] });
       qc.invalidateQueries({ queryKey: ['customers'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['cash'] }); // qarz to'lovi = kassa kirimi
     },
   });
+}
+
+export interface DebtHistoryItem {
+  productName: string;
+  unit: string;
+  quantity: string;
+  unitPrice: string;
+  lineTotal: string;
 }
 
 export interface DebtHistoryEntry {
@@ -42,6 +51,11 @@ export interface DebtHistoryEntry {
   date: string;
   amount: string;
   summary: string;
+  notes?: string | null;
+  runningBalance: string;
+  totalCost?: string;
+  profit?: string;
+  items?: DebtHistoryItem[];
 }
 
 export function useCustomerHistory(id: number | null) {

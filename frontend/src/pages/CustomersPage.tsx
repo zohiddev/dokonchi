@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import { useCustomers, useCreateCustomer, useDeleteCustomer, useUpdateCustomer } from '../api/customers';
 import { useDebts } from '../api/debts';
 import { Button } from '../components/ui/Button';
@@ -20,6 +21,7 @@ interface CustomerFormValues {
 
 export function CustomersPage() {
   const toast = useToast();
+  const navigate = useNavigate();
   const customers = useCustomers();
   const debts = useDebts(); // balansga ko'rilgan ro'yxat — qarzdorlarni topish uchun
   const createCustomer = useCreateCustomer();
@@ -97,7 +99,10 @@ export function CustomersPage() {
       key: 'actions',
       header: '',
       render: (c) => (
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <div
+          style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant="ghost" size="sm" onClick={() => openEdit(c)}>
             Tahrir
           </Button>
@@ -128,6 +133,7 @@ export function CustomersPage() {
           data={customers.data}
           rowKey={(c) => c.id}
           isLoading={customers.isLoading}
+          onRowClick={(c) => navigate(`/customers/${c.id}`)}
           emptyTitle="Mijoz yo'q"
           emptyDescription="Birinchi mijozni qo'shing"
         />

@@ -9,6 +9,14 @@ export function useCustomers() {
   });
 }
 
+export function useCustomer(id: number | null) {
+  return useQuery({
+    queryKey: ['customers', id, 'detail'],
+    queryFn: async () => (await api.get<Customer>(`/customers/${id}`)).data,
+    enabled: id !== null,
+  });
+}
+
 export function useCustomerBalance(id: number | null) {
   return useQuery({
     queryKey: ['customers', id, 'balance'],
