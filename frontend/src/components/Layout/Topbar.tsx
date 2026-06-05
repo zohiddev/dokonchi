@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { PrinterButton } from '../PrinterButton';
 
 const PAGE_META: Record<string, { title: string; subtitle?: string }> = {
   '/': { title: 'Boshqaruv paneli', subtitle: 'Umumiy holat va so\'nggi harakatlar' },
@@ -37,6 +38,8 @@ export function Topbar({ onNewSale }: TopbarProps) {
         </svg>
         <input placeholder="Qidirish..." />
       </div>
+
+      <PrinterButton />
 
       <button className="btn-new-sale" onClick={onNewSale} title="Yangi sotuv">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

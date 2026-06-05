@@ -33,9 +33,9 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   const port = Number(process.env.PORT) || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`🚀 Backend running at http://localhost:${port} (docs: /api/docs)`);
+  console.log(`🚀 Backend running on port ${port} (docs: /api/docs)`);
 }
 
 void bootstrap();

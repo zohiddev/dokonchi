@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: dokonchi-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/main
+    healthCheckPath: /api/docs
+    envVars:
+      # Neon connection string — Render dashboard'da qo'lda kiritiladi
+      - key: DATABASE_URL
+        sync: false
+      # Frontend (Vercel) URL — Render dashboard'da qo'lda kiritiladi
+      - key: CORS_ORIGIN
+        sync: false
+      # JWT maxfiy kalit — Render avtomatik random generatsiya qiladi
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: NODE_VERSION
+        value: "22"

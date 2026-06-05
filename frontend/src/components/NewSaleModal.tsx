@@ -7,6 +7,7 @@ import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { Spinner } from './ui/Spinner';
 import { useToast } from './ui/Toast';
+import { usePrinter } from './PrinterContext';
 import { extractError } from '../lib/axios';
 import { money, qty as qtyFmt } from '../lib/format';
 import type { InventoryRow, PaymentType } from '../types/api';
@@ -27,6 +28,7 @@ interface CartLine {
 
 export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
   const toast = useToast();
+  const printer = usePrinter();
   const inventory = useInventory();
   const categories = useCategories();
   const customers = useCustomers();
@@ -206,7 +208,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
   const handleSubmit = async () => {
     if (!canSubmit) return;
     try {
-      await createSale.mutateAsync({
+      const sale = await createSale.mutateAsync({
         paymentType,
         customerId: customerId ? Number(customerId) : undefined,
         notes: notes || undefined,
@@ -214,6 +216,17 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
       });
       toast.success(`Sotuv saqlandi · ${money(cartTotal, false)} so'm`);
       onClose();
+
+      // Chek: printer ulangan bo'lsa darxol chop qilamiz (sotuvni bloklamaymiz)
+      try {
+        const printed = await printer.printSale(sale);
+        if (printed) toast.success('Chek chop etildi');
+        else if (printer.status !== 'unsupported') {
+          toast.info('Printer ulanmagan — chek chop etilmadi');
+        }
+      } catch (printErr) {
+        toast.error(`Chek chop etilmadi: ${extractError(printErr)}`);
+      }
     } catch (e) {
       toast.error(extractError(e));
     }
