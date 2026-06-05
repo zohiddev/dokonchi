@@ -12,9 +12,9 @@ services:
       # Neon connection string — Render dashboard'da qo'lda kiritiladi
       - key: DATABASE_URL
         sync: false
-      # Frontend (Vercel) URL — Render dashboard'da qo'lda kiritiladi
+      # Demo uchun barcha origin'ga ruxsat; keyin Vercel URL'iga cheklanadi
       - key: CORS_ORIGIN
-        sync: false
+        value: "*"
       # JWT maxfiy kalit — Render avtomatik random generatsiya qiladi
       - key: JWT_SECRET
         generateValue: true

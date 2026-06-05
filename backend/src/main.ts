@@ -18,8 +18,10 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
 
+  const corsOrigin = process.env.CORS_ORIGIN;
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? true,
+    // bo'sh yoki "*" bo'lsa — barcha origin'larga ruxsat (demo uchun qulay)
+    origin: !corsOrigin || corsOrigin === '*' ? true : corsOrigin.split(','),
     credentials: true,
   });
 
