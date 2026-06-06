@@ -7,7 +7,7 @@ export function Spinner({ size = 24, label }: { size?: number; label?: string })
         .spinner-wrap { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-soft); }
         .spinner {
           border: 2.5px solid var(--line);
-          border-top-color: var(--green-2);
+          border-top-color: var(--accent);
           border-radius: 50%;
           animation: spin .8s linear infinite;
         }

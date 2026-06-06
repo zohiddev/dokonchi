@@ -1,18 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#4f7a52"/>
-      <stop offset="100%" stop-color="#3a5a40"/>
+      <stop offset="0%" stop-color="#3f6fe0"/>
+      <stop offset="100%" stop-color="#2950bd"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" fill="#3a5a40" rx="11.52" ry="11.52"/>
+  <rect width="64" height="64" fill="#2950bd" rx="11.52" ry="11.52"/>
   <g transform="translate(0, 0)">
     <rect width="64" height="64" fill="url(#g)" rx="11.52" ry="11.52"/>
     <text x="32" y="32"
           font-family="Georgia, 'Times New Roman', serif"
           font-weight="700"
           font-size="39.68"
-          fill="#fbf8f1"
+          fill="#ffffff"
           text-anchor="middle"
           dominant-baseline="central">D</text>
   </g>

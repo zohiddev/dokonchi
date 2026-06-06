@@ -245,7 +245,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           background: var(--paper-2);
           outline: none; font-family: inherit;
         }
-        .field input:focus { border-color: var(--green-2); background: var(--card); }
+        .field input:focus { border-color: var(--accent); background: var(--card); }
         .field .err { color: var(--brick); font-size: 12px; }
       `}</style>
     </label>

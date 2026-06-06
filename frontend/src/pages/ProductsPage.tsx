@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useCategories, useCreateProduct, useDeleteProduct, useProducts } from '../api/products';
+import { useCategories, useCreateProduct, useDeleteProduct, useProducts, useUpdateProduct } from '../api/products';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -9,7 +9,8 @@ import { Modal } from '../components/ui/Modal';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
-import { money } from '../lib/format';
+import { formatThousands, money, parseAmount } from '../lib/format';
+import { moneyField } from '../lib/moneyField';
 import type { Product, Unit } from '../types/api';
 
 const UNITS: { value: Unit; label: string }[] = [
@@ -35,9 +36,21 @@ export function ProductsPage() {
   const [activeCat, setActiveCat] = useState<number | 'all'>('all');
   const products = useProducts(activeCat === 'all' ? {} : { categoryId: activeCat });
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Product | null>(null);
 
   const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+
+  const openCreate = () => {
+    setEditing(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (p: Product) => {
+    setEditing(p);
+    setModalOpen(true);
+  };
 
   const categoryOptions = useMemo(() => {
     const all = [{ value: 'all' as const, label: 'Barchasi', count: products.data?.length }];
@@ -101,14 +114,20 @@ export function ProductsPage() {
     {
       key: 'actions',
       header: '',
-      render: (p) =>
-        p.isActive && (
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(p)}>
-            O'chirish
+      render: (p) => (
+        <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(p)}>
+            Tahrirlash
           </Button>
-        ),
+          {p.isActive && (
+            <Button variant="ghost" size="sm" onClick={() => handleDelete(p)}>
+              O'chirish
+            </Button>
+          )}
+        </div>
+      ),
       align: 'right',
-      width: '120px',
+      width: '200px',
     },
   ];
 
@@ -120,7 +139,7 @@ export function ProductsPage() {
           onChange={setActiveCat}
           options={categoryOptions}
         />
-        <Button onClick={() => setModalOpen(true)} icon={<IconPlus />}>
+        <Button onClick={openCreate} icon={<IconPlus />}>
           Yangi mahsulot
         </Button>
       </div>
@@ -133,24 +152,32 @@ export function ProductsPage() {
           isLoading={products.isLoading}
           emptyTitle="Mahsulot yo'q"
           emptyDescription="Bu toifada hozircha mahsulot yo'q"
+          resetKey={activeCat}
         />
       </Card>
 
-      <NewProductModal
+      <ProductModal
         open={modalOpen}
+        product={editing}
         onClose={() => setModalOpen(false)}
         categories={categories.data ?? []}
         onSubmit={async (values) => {
+          const payload = {
+            name: values.name,
+            categoryId: Number(values.categoryId),
+            baseUnit: values.baseUnit,
+            packSize: values.packSize ? Number(values.packSize) : null,
+            defaultSalePrice: values.defaultSalePrice ? parseAmount(values.defaultSalePrice) : null,
+            barcode: values.barcode || null,
+          };
           try {
-            await createProduct.mutateAsync({
-              name: values.name,
-              categoryId: Number(values.categoryId),
-              baseUnit: values.baseUnit,
-              packSize: values.packSize ? Number(values.packSize) : undefined,
-              defaultSalePrice: values.defaultSalePrice ? Number(values.defaultSalePrice) : undefined,
-              barcode: values.barcode || undefined,
-            });
-            toast.success("Mahsulot qo'shildi");
+            if (editing) {
+              await updateProduct.mutateAsync({ id: editing.id, ...payload });
+              toast.success("Mahsulot yangilandi");
+            } else {
+              await createProduct.mutateAsync(payload);
+              toast.success("Mahsulot qo'shildi");
+            }
             setModalOpen(false);
           } catch (e) {
             toast.error(extractError(e));
@@ -169,17 +196,34 @@ export function ProductsPage() {
   );
 }
 
-interface NewProductModalProps {
+interface ProductModalProps {
   open: boolean;
+  product: Product | null;
   onClose: () => void;
   categories: { id: number; name: string }[];
   onSubmit: (values: ProductFormValues) => Promise<void>;
 }
 
-function NewProductModal({ open, onClose, categories, onSubmit }: NewProductModalProps) {
+function ProductModal({ open, product, onClose, categories, onSubmit }: ProductModalProps) {
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProductFormValues>({
     defaultValues: { baseUnit: 'KG' },
   });
+
+  useEffect(() => {
+    if (!open) return;
+    if (product) {
+      reset({
+        name: product.name,
+        categoryId: product.categoryId,
+        baseUnit: product.baseUnit,
+        packSize: product.packSize != null ? String(product.packSize) : '',
+        defaultSalePrice: formatThousands(product.defaultSalePrice),
+        barcode: product.barcode ?? '',
+      });
+    } else {
+      reset({ name: '', categoryId: undefined, baseUnit: 'KG', packSize: '', defaultSalePrice: '', barcode: '' });
+    }
+  }, [open, product, reset]);
 
   return (
     <Modal
@@ -188,7 +232,7 @@ function NewProductModal({ open, onClose, categories, onSubmit }: NewProductModa
         reset();
         onClose();
       }}
-      title="Yangi mahsulot"
+      title={product ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Bekor</Button>
@@ -221,7 +265,7 @@ function NewProductModal({ open, onClose, categories, onSubmit }: NewProductModa
         </div>
         <div className="form-row">
           <Field label="Sotuv narxi (so'm)">
-            <input {...register('defaultSalePrice')} placeholder="280000" inputMode="numeric" />
+            <input {...moneyField(register('defaultSalePrice'))} placeholder="280 000" />
           </Field>
           <Field label="Pack size (ixt.)">
             <input {...register('packSize')} placeholder="25" inputMode="decimal" />
@@ -263,7 +307,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           transition: border-color .15s, background .15s;
         }
         .field input:focus, .field select:focus {
-          border-color: var(--green-2);
+          border-color: var(--accent);
           background: var(--card);
         }
         .field .err { color: var(--brick); font-size: 12px; }

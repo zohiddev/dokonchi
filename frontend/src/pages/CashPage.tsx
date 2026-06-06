@@ -140,7 +140,7 @@ export function CashPage() {
           border-radius: 8px; background: var(--paper-2);
           font-family: inherit; outline: none;
         }
-        .date-bar input:focus { border-color: var(--green-2); background: var(--card); }
+        .date-bar input:focus { border-color: var(--accent); background: var(--card); }
         .date-bar .hint { color: var(--ink-soft); font-size: 12.5px; }
         .date-bar .hint strong { color: var(--ink); font-weight: 600; }
 
@@ -264,7 +264,7 @@ function TxRow({ tx }: { tx: CashTransaction }) {
         .tx-badge.tone-green { background: var(--green-soft); color: var(--green); }
         .tx-badge.tone-amber { background: var(--amber-soft); color: var(--amber); }
         .tx-badge.tone-brick { background: var(--brick-soft); color: var(--brick); }
-        .tx-badge.tone-gray { background: #e9e2d4; color: var(--ink-soft); }
+        .tx-badge.tone-gray { background: var(--line); color: var(--ink-soft); }
         .tx-badge .emoji { font-size: 13px; }
         .tx-desc { color: var(--ink); }
         .tx-amount { font-weight: 600; text-align: right; }

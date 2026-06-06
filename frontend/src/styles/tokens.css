@@ -1,24 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* "Raqamli daftar" — issiq palitra */
-  --paper: #f3ede0;
-  --paper-2: #fbf8f1;
-  --card: #fefcf8;
-  --ink: #2b2620;
-  --ink-soft: #7a7164;
-  --ink-faint: #a89e8e;
-  --line: #e4dccb;
-  --line-strong: #d6ccb6;
-  --green: #3a5a40;
-  --green-2: #4f7a52;
-  --green-soft: #e7eee2;
-  --amber: #c47a26;
-  --amber-soft: #f6e9d3;
-  --brick: #a4493d;
-  --brick-soft: #f1ddd6;
-  --radius: 14px;
-  --shadow: 0 1px 2px rgba(43, 38, 32, 0.04), 0 8px 24px rgba(43, 38, 32, 0.06);
+  /* "Slate" — sovuq, jiddiy professional palitra */
+  --paper: #f5f7fa;
+  --paper-2: #fafbfe;
+  --card: #ffffff;
+  --ink: #1a2230;
+  --ink-soft: #5b6573;
+  --ink-faint: #9aa3b0;
+  --line: #e7eaf0;
+  --line-strong: #d4d9e2;
+  /* Brand / urg'u — ko'k (primary tugmalar, nav, fokus) */
+  --accent: #2f5fd8;
+  --accent-2: #2950bd;
+  --accent-soft: #e8eefc;
+  /* Muvaffaqiyat / foyda — yashil */
+  --green: #2e9e6b;
+  --green-2: #26885b;
+  --green-soft: #e3f4ec;
+  /* Ogohlantirish — amber */
+  --amber: #c2791a;
+  --amber-soft: #f6ebd6;
+  /* Qarz / xavf — qizil */
+  --brick: #d14343;
+  --brick-soft: #fbe3e3;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(20, 30, 55, 0.04), 0 8px 24px rgba(20, 30, 55, 0.07);
 }
 
 * {
@@ -36,8 +43,6 @@ body {
   background: var(--paper);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(rgba(120, 108, 88, 0.05) 1px, transparent 1px);
-  background-size: 22px 22px;
   font-size: 14px;
   line-height: 1.45;
 }

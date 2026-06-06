@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCustomers, useUpdateCustomer } from '../api/customers';
 import { useDebts, useDebtsSummary } from '../api/debts';
 import { PayDebtModal } from '../components/PayDebtModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { date, money } from '../lib/format';
-import type { DebtCustomer } from '../types/api';
+import { Modal } from '../components/ui/Modal';
+import { useToast } from '../components/ui/Toast';
+import { extractError } from '../lib/axios';
+import { date, formatThousands, money, parseAmount } from '../lib/format';
+import type { Customer, DebtCustomer } from '../types/api';
 
 export function DebtsPage() {
   const navigate = useNavigate();
   const debts = useDebts();
   const summary = useDebtsSummary();
   const [payCustomer, setPayCustomer] = useState<DebtCustomer | null>(null);
+  const [oldDebtOpen, setOldDebtOpen] = useState(false);
 
   const columns: Column<DebtCustomer>[] = [
     {
@@ -91,6 +96,12 @@ export function DebtsPage() {
 
   return (
     <div className="debts-page">
+      <div className="debts-toolbar">
+        <Button variant="ghost" onClick={() => setOldDebtOpen(true)} icon={<IconPlus />}>
+          Eski qarz qo'shish
+        </Button>
+      </div>
+
       <div className="summary-row">
         <Card>
           <CardBody>
@@ -127,8 +138,11 @@ export function DebtsPage() {
         onClose={() => setPayCustomer(null)}
       />
 
+      <OldDebtModal open={oldDebtOpen} onClose={() => setOldDebtOpen(false)} />
+
       <style>{`
         .debts-page { display: flex; flex-direction: column; gap: 16px; }
+        .debts-toolbar { display: flex; justify-content: flex-end; }
         .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .summary-row small {
           font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px;
@@ -141,5 +155,119 @@ export function DebtsPage() {
         @media (max-width: 600px) { .summary-row { grid-template-columns: 1fr; } }
       `}</style>
     </div>
+  );
+}
+
+// Mavjud mijozga appdan oldingi eski qarzni kiritish modali
+function OldDebtModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const toast = useToast();
+  const customers = useCustomers();
+  const updateCustomer = useUpdateCustomer();
+  const [customerId, setCustomerId] = useState<number | ''>('');
+  const [amount, setAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const selected: Customer | undefined = customers.data?.find((c) => c.id === customerId);
+
+  // Tanlangan mijozning hozirgi eski qarzini ko'rsatamiz (tahrirlash uchun)
+  useEffect(() => {
+    if (selected) setAmount(formatThousands(selected.openingDebt));
+  }, [selected]);
+
+  const close = () => {
+    setCustomerId('');
+    setAmount('');
+    onClose();
+  };
+
+  const submit = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await updateCustomer.mutateAsync({
+        id: selected.id,
+        name: selected.name,
+        openingDebt: parseAmount(amount),
+      });
+      toast.success('Eski qarz saqlandi');
+      close();
+    } catch (e) {
+      toast.error(extractError(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal
+      open={open}
+      onClose={close}
+      title="Eski qarz qo'shish"
+      footer={
+        <>
+          <Button variant="ghost" onClick={close}>Bekor</Button>
+          <Button onClick={submit} disabled={!selected || saving}>
+            {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+          </Button>
+        </>
+      }
+    >
+      <div className="old-debt-form">
+        <label className="field">
+          <span>Mijoz</span>
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value ? Number(e.target.value) : '')}
+            autoFocus
+          >
+            <option value="">— mijozni tanlang —</option>
+            {(customers.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Eski qarz summasi (so'm)</span>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(formatThousands(e.target.value))}
+            inputMode="numeric"
+            placeholder="500 000"
+          />
+        </label>
+        <p className="hint">
+          Mijoz ro'yxatda bo'lmasa, avval "Mijozlar" bo'limidan qo'shing.
+        </p>
+      </div>
+
+      <style>{`
+        .old-debt-form { display: flex; flex-direction: column; gap: 14px; }
+        .old-debt-form .field { display: flex; flex-direction: column; gap: 5px; }
+        .old-debt-form .field span {
+          font-size: 12px; color: var(--ink-soft); font-weight: 500;
+          text-transform: uppercase; letter-spacing: .4px;
+        }
+        .old-debt-form input, .old-debt-form select {
+          padding: 10px 12px;
+          border: 1px solid var(--line-strong);
+          border-radius: 9px;
+          background: var(--paper-2);
+          color: var(--ink);
+          outline: none; font-family: inherit;
+        }
+        .old-debt-form input:focus, .old-debt-form select:focus {
+          border-color: var(--accent); background: var(--card);
+        }
+        .old-debt-form .hint { margin: 0; font-size: 12px; color: var(--ink-faint); }
+      `}</style>
+    </Modal>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
   );
 }

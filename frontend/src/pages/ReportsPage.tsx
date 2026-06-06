@@ -330,7 +330,7 @@ export function ReportsPage() {
           display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
         }
         .cust-link { color: var(--ink); font-weight: 600; }
-        .cust-link:hover { color: var(--green); text-decoration: underline; }
+        .cust-link:hover { color: var(--accent); text-decoration: underline; }
         .rank-vals {
           text-align: right;
           display: flex; flex-direction: column; gap: 2px;
@@ -489,7 +489,7 @@ function SalesHeatmap({ data }: { data: ReturnType<typeof useSalesHeatmap>['data
                     title={c.count > 0 ? `${c.count} sotuv · ${money(c.total)}` : ''}
                     style={{
                       background: c.count > 0
-                        ? `rgba(58, 90, 64, ${Math.max(0.08, intensity)})`
+                        ? `rgba(47, 95, 216, ${Math.max(0.08, intensity)})`
                         : 'var(--paper)',
                       color: intensity > 0.5 ? 'var(--paper-2)' : 'var(--ink)',
                     }}

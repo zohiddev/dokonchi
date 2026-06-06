@@ -4,10 +4,10 @@ import { useToast } from './ui/Toast';
 import { extractError } from '../lib/axios';
 
 const STATUS_META = {
-  unsupported: { dot: '#9a9388', label: 'Printer (qo\'llanmaydi)' },
-  disconnected: { dot: '#c0492f', label: 'Printer ulanmagan' },
-  connected: { dot: '#3a5a40', label: 'Printer ulangan' },
-  printing: { dot: '#caa14a', label: 'Chop qilinmoqda...' },
+  unsupported: { dot: '#9aa3b0', label: 'Printer (qo\'llanmaydi)' },
+  disconnected: { dot: '#d14343', label: 'Printer ulanmagan' },
+  connected: { dot: '#2e9e6b', label: 'Printer ulangan' },
+  printing: { dot: '#c2791a', label: 'Chop qilinmoqda...' },
 } as const;
 
 export function PrinterButton() {
@@ -177,7 +177,7 @@ export function PrinterButton() {
           background: var(--paper-2);
           border: 1px solid var(--line-strong);
           border-radius: 14px;
-          box-shadow: 0 14px 40px rgba(43,38,32,.18);
+          box-shadow: 0 14px 40px rgba(26, 34, 48,.18);
           padding: 14px;
           z-index: 200;
         }
@@ -197,9 +197,9 @@ export function PrinterButton() {
           border-radius: 9px; font-family: inherit; font-size: 12.5px; font-weight: 600;
           cursor: pointer;
         }
-        .prn-btn:hover:not(:disabled) { border-color: var(--green-2); }
+        .prn-btn:hover:not(:disabled) { border-color: var(--accent); }
         .prn-btn:disabled { opacity: .5; cursor: not-allowed; }
-        .prn-btn.primary { background: var(--green); color: var(--paper-2); border-color: var(--green); }
+        .prn-btn.primary { background: var(--accent); color: var(--paper-2); border-color: var(--accent); }
         .prn-btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
 
         .prn-sep { height: 1px; background: var(--line); margin: 13px 0; }
@@ -216,7 +216,7 @@ export function PrinterButton() {
           font-family: inherit; font-size: 13px; color: var(--ink);
           outline: none; width: 100%;
         }
-        .prn-form input:focus, .prn-form select:focus { border-color: var(--green-2); }
+        .prn-form input:focus, .prn-form select:focus { border-color: var(--accent); }
         .prn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .prn-grid > div { display: flex; flex-direction: column; gap: 4px; }
       `}</style>

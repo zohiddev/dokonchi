@@ -75,7 +75,7 @@ export function Sidebar() {
           width: 248px;
           flex-shrink: 0;
           background: var(--ink);
-          color: #e9e2d4;
+          color: #d4dae5;
           display: flex;
           flex-direction: column;
           padding: 22px 14px;
@@ -86,9 +86,9 @@ export function Sidebar() {
         .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 6px 10px 22px; }
         .sidebar .brand .mark {
           width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-          background: linear-gradient(145deg, var(--green-2), var(--green));
+          background: linear-gradient(145deg, var(--accent-2), var(--accent));
           display: grid; place-items: center;
-          font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; color: #fbf8f1;
+          font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; color: #fff;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
         }
         .sidebar .brand h1 { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; letter-spacing: .2px; line-height: 1.1; }
@@ -103,8 +103,8 @@ export function Sidebar() {
           text-decoration: none;
         }
         .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke-width: 1.7; }
-        .nav-item:hover { background: rgba(255, 255, 255, .05); color: #fbf8f1; }
-        .nav-item.active { background: var(--green); color: #fbf8f1; box-shadow: var(--shadow); }
+        .nav-item:hover { background: rgba(255, 255, 255, .05); color: #fff; }
+        .nav-item.active { background: var(--accent); color: #fff; box-shadow: var(--shadow); }
         .sidebar-foot { margin-top: auto; padding: 14px 12px 4px; border-top: 1px solid rgba(255, 255, 255, .08); }
         .user-chip { display: flex; align-items: center; gap: 10px; }
         .user-chip .av {
@@ -113,14 +113,14 @@ export function Sidebar() {
           display: grid; place-items: center;
           font-weight: 700; font-family: 'Fraunces', serif;
         }
-        .user-chip b { font-size: 13.5px; color: #f3ede0; font-weight: 600; display: block; }
+        .user-chip b { font-size: 13.5px; color: #f5f7fa; font-weight: 600; display: block; }
         .user-chip small { font-size: 11.5px; color: #857c6c; }
         .logout-btn {
           background: transparent; border: none; color: #857c6c;
           cursor: pointer; padding: 6px; border-radius: 6px;
           transition: color .15s, background .15s;
         }
-        .logout-btn:hover { color: #fbf8f1; background: rgba(255,255,255,.06); }
+        .logout-btn:hover { color: #fff; background: rgba(255,255,255,.06); }
         .logout-btn svg { width: 18px; height: 18px; stroke-width: 1.7; }
         @media (max-width: 880px) {
           .sidebar { display: none; }

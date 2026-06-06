@@ -146,11 +146,12 @@ export function DashboardPage() {
         />
         <DataTable
           columns={recentColumns}
-          data={recentSales.data}
+          data={recentSales.data?.items}
           rowKey={(s) => s.id}
           isLoading={recentSales.isLoading}
           emptyTitle="Sotuvlar yo'q"
           compact
+          pageSize={false}
         />
       </Card>
 
@@ -165,9 +166,9 @@ export function DashboardPage() {
         .attention-list .row strong { flex: 1; font-size: 13.5px; font-weight: 600; }
         .attention-list small { font-size: 12px; color: var(--ink-soft); }
         .link-more {
-          color: var(--green-2); font-size: 13px; font-weight: 600;
+          color: var(--accent); font-size: 13px; font-weight: 600;
         }
-        .link-more:hover { color: var(--green); }
+        .link-more:hover { color: var(--accent-2); }
         @media (max-width: 960px) {
           .kpi-grid { grid-template-columns: repeat(2, 1fr); }
           .row-2 { grid-template-columns: 1fr; }

@@ -50,16 +50,26 @@ export class SalesService {
       }
     }
 
-    return this.prisma.sale.findMany({
-      where,
-      include: {
-        user: { select: { id: true, name: true } },
-        customer: true,
-        items: { include: { product: true } },
-      },
-      orderBy: { saleDate: 'desc' },
-      take: query.limit ?? 50,
-    });
+    const limit = query.limit ?? 50;
+    const page = query.page ?? 1;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.sale.findMany({
+        where,
+        include: {
+          user: { select: { id: true, name: true } },
+          customer: true,
+          items: { include: { product: true } },
+        },
+        orderBy: { saleDate: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.sale.count({ where }),
+    ]);
+
+    return { items, total, page, limit };
   }
 
   async findOne(id: number) {

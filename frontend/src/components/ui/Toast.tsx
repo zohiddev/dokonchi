@@ -67,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         .toast {
           padding: 12px 18px;
           border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(43, 38, 32, .15);
+          box-shadow: 0 10px 30px rgba(26, 34, 48, .15);
           font-size: 13.5px;
           font-weight: 500;
           max-width: 320px;

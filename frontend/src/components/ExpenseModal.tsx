@@ -5,6 +5,8 @@ import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { extractError } from '../lib/axios';
 import { dateOnlyToIso } from '../lib/date';
+import { parseAmount } from '../lib/format';
+import { moneyField } from '../lib/moneyField';
 
 // Tipik xarajat toifalari — datalist orqali tavsiya qilamiz, lekin user
 // xohlagan toifani yoza oladi (free-text)
@@ -57,7 +59,7 @@ export function ExpenseModal({ open, onClose, defaultDate }: ExpenseModalProps) 
       await createExpense.mutateAsync({
         expenseDate: dateOnlyToIso(v.expenseDate),
         category: v.category,
-        amount: Number(v.amount),
+        amount: parseAmount(v.amount),
         notes: v.notes || undefined,
       });
       toast.success("Xarajat qo'shildi");
@@ -105,9 +107,8 @@ export function ExpenseModal({ open, onClose, defaultDate }: ExpenseModalProps) 
         </Field>
         <Field label="Summa (so'm)" error={errors.amount?.message}>
           <input
-            {...register('amount', { required: 'Summa kerak' })}
-            inputMode="numeric"
-            placeholder="150000"
+            {...moneyField(register('amount', { required: 'Summa kerak' }))}
+            placeholder="150 000"
           />
         </Field>
         <Field label="Izoh (ixt.)">
@@ -141,7 +142,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           background: var(--paper-2);
           outline: none; font-family: inherit;
         }
-        .field input:focus { border-color: var(--green-2); background: var(--card); }
+        .field input:focus { border-color: var(--accent); background: var(--card); }
         .field .err { color: var(--brick); font-size: 12px; }
       `}</style>
     </label>

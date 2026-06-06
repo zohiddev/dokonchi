@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/axios';
-import type { PaymentType, Sale, SalePreviewResult } from '../types/api';
+import type { Paginated, PaymentType, Sale, SalePreviewResult } from '../types/api';
 
 export interface SalesFilter {
   paymentType?: PaymentType;
   from?: string;
   to?: string;
   limit?: number;
+  page?: number;
 }
 
 export function useSales(filter: SalesFilter = {}) {
   return useQuery({
     queryKey: ['sales', filter],
-    queryFn: async () => (await api.get<Sale[]>('/sales', { params: filter })).data,
+    queryFn: async () => (await api.get<Paginated<Sale>>('/sales', { params: filter })).data,
   });
 }
 

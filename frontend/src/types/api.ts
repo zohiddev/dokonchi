@@ -1,4 +1,11 @@
 // Backend bilan mos turlar
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export type Role = 'ADMIN' | 'SOTUVCHI';
 export type Unit = 'KG' | 'DONA' | 'LITR' | 'QOP' | 'QUTI';
 export type PaymentType = 'NAQD' | 'KARTA' | 'NASIYA';
@@ -105,6 +112,7 @@ export interface Customer {
   name: string;
   phone: string | null;
   notes: string | null;
+  openingDebt: string;
 }
 
 export interface CustomerBalance {

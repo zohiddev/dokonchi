@@ -13,7 +13,8 @@ import { StockBar } from '../components/ui/StockBar';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
 import { dateOnlyToIso } from '../lib/date';
-import { date, money } from '../lib/format';
+import { date, money, parseAmount } from '../lib/format';
+import { moneyField } from '../lib/moneyField';
 import type { Batch } from '../types/api';
 
 type FilterTab = 'this-week' | 'all' | 'finished';
@@ -156,8 +157,8 @@ export function BatchesPage() {
               supplierId: v.supplierId ? Number(v.supplierId) : undefined,
               receivedDate: dateOnlyToIso(v.receivedDate),
               quantityReceived: Number(v.quantityReceived),
-              costPricePerUnit: Number(v.costPricePerUnit),
-              salePricePerUnit: v.salePricePerUnit ? Number(v.salePricePerUnit) : undefined,
+              costPricePerUnit: parseAmount(v.costPricePerUnit),
+              salePricePerUnit: v.salePricePerUnit ? parseAmount(v.salePricePerUnit) : undefined,
               notes: v.notes || undefined,
             });
             toast.success("Partiya qo'shildi");
@@ -235,10 +236,10 @@ function NewBatchModal({ open, onClose, products, suppliers, onSubmit }: NewBatc
         </Field>
         <div className="form-row">
           <Field label="Kirim narxi (so'm)" error={errors.costPricePerUnit?.message}>
-            <input {...register('costPricePerUnit', { required: "Narx kerak" })} inputMode="numeric" placeholder="240000" />
+            <input {...moneyField(register('costPricePerUnit', { required: "Narx kerak" }))} placeholder="240 000" />
           </Field>
           <Field label="Sotuv narxi (ixt.)">
-            <input {...register('salePricePerUnit')} inputMode="numeric" placeholder="280000" />
+            <input {...moneyField(register('salePricePerUnit'))} placeholder="280 000" />
           </Field>
         </div>
         <Field label="Izoh (ixt.)">
@@ -273,7 +274,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           outline: none; font-family: inherit;
         }
         .field input:focus, .field select:focus {
-          border-color: var(--green-2);
+          border-color: var(--accent);
           background: var(--card);
         }
         .field .err { color: var(--brick); font-size: 12px; }

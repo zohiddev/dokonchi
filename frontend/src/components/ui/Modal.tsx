@@ -36,7 +36,7 @@ export function Modal({ open, onClose, title, children, footer, width = 480 }: M
       <style>{`
         .modal-overlay {
           position: fixed; inset: 0;
-          background: rgba(43, 38, 32, .45);
+          background: rgba(26, 34, 48, .45);
           backdrop-filter: blur(2px);
           z-index: 200;
           display: grid; place-items: center;
@@ -46,7 +46,7 @@ export function Modal({ open, onClose, title, children, footer, width = 480 }: M
         .modal {
           background: var(--card);
           border-radius: 18px;
-          box-shadow: 0 24px 60px rgba(43, 38, 32, .25);
+          box-shadow: 0 24px 60px rgba(26, 34, 48, .25);
           width: 100%;
           max-height: 90vh;
           display: flex;

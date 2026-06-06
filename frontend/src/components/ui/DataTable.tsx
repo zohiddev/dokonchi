@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Spinner } from './Spinner';
 import { EmptyState } from './EmptyState';
+import { Pagination } from './Pagination';
 
 export interface Column<T> {
   key: string;
@@ -19,6 +20,10 @@ interface DataTableProps<T> {
   emptyDescription?: string;
   onRowClick?: (row: T) => void;
   compact?: boolean;
+  /** Client-side pagination (sahifadagi qatorlar soni). false => paginationsiz */
+  pageSize?: number | false;
+  /** O'zgarganda 1-sahifaga qaytadi (masalan filtr qiymati) */
+  resetKey?: unknown;
 }
 
 export function DataTable<T>({
@@ -30,7 +35,32 @@ export function DataTable<T>({
   emptyDescription,
   onRowClick,
   compact = false,
+  pageSize = 15,
+  resetKey,
 }: DataTableProps<T>) {
+  const [page, setPage] = useState(1);
+  const total = data?.length ?? 0;
+  const paginate = pageSize !== false && total > pageSize;
+  const size = pageSize === false ? total : pageSize;
+  const pageCount = paginate ? Math.ceil(total / size) : 1;
+
+  // filtr o'zgarsa 1-sahifaga qaytamiz
+  useEffect(() => {
+    setPage(1);
+  }, [resetKey]);
+
+  // qatorlar kamaysa joriy sahifani diapazonga moslaymiz
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
+
+  const rows = useMemo(() => {
+    if (!data) return [];
+    if (!paginate) return data;
+    const start = (page - 1) * size;
+    return data.slice(start, start + size);
+  }, [data, paginate, page, size]);
+
   if (isLoading) {
     return (
       <div className="table-state">
@@ -56,7 +86,7 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {data.map((row) => (
+          {rows.map((row) => (
             <tr
               key={rowKey(row)}
               onClick={() => onRowClick?.(row)}
@@ -71,6 +101,16 @@ export function DataTable<T>({
           ))}
         </tbody>
       </table>
+
+      {paginate && (
+        <Pagination
+          page={page}
+          pageCount={pageCount}
+          onChange={setPage}
+          totalItems={total}
+          pageSize={size}
+        />
+      )}
 
       <style>{`
         .table-wrap { width: 100%; overflow-x: auto; }

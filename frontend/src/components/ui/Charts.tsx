@@ -15,15 +15,17 @@ import { money } from '../../lib/format';
 
 // ===== Umumiy ranglar (tokens.css bilan mos) =====
 const COLOR = {
-  green: '#3a5a40',
-  greenSoft: '#4f7a52',
-  amber: '#c47a26',
-  brick: '#a4493d',
-  ink: '#2b2620',
-  inkSoft: '#7a7164',
-  inkFaint: '#a89e8e',
-  line: '#e4dccb',
-  paper: '#fbf8f1',
+  accent: '#2f5fd8',
+  accentSoft: '#5a82e2',
+  green: '#26885b',
+  greenSoft: '#2e9e6b',
+  amber: '#c2791a',
+  brick: '#d14343',
+  ink: '#1a2230',
+  inkSoft: '#5b6573',
+  inkFaint: '#9aa3b0',
+  line: '#e7eaf0',
+  paper: '#fafbfe',
 };
 
 const AXIS_STYLE = {
@@ -60,14 +62,14 @@ function CustomTooltip({ active, payload, label, formatter }: TipProps) {
           color: ${COLOR.paper};
           padding: 8px 11px;
           border-radius: 8px;
-          box-shadow: 0 6px 18px rgba(43,38,32,.2);
+          box-shadow: 0 6px 18px rgba(26,34,48,.2);
           font-size: 12px;
           min-width: 120px;
         }
         .rt-tip-lbl {
           font-weight: 600;
           margin-bottom: 4px;
-          color: #f3ede0;
+          color: #e7eaf0;
         }
         .rt-tip-row {
           display: flex; align-items: center; gap: 7px;
@@ -78,11 +80,11 @@ function CustomTooltip({ active, payload, label, formatter }: TipProps) {
           flex-shrink: 0;
         }
         .rt-tip-name {
-          flex: 1; color: #c8bfac;
+          flex: 1; color: #9aa3b0;
           font-size: 11.5px;
         }
         .rt-tip-val {
-          font-weight: 600; color: #fbf8f1;
+          font-weight: 600; color: #fafbfe;
         }
       `}</style>
     </div>
@@ -170,7 +172,7 @@ export interface BarPoint {
 export function SimpleBarChart({
   data,
   height = 200,
-  color = COLOR.greenSoft,
+  color = COLOR.accent,
   formatter,
 }: {
   data: BarPoint[];
@@ -208,7 +210,7 @@ export function SimpleBarChart({
           />
           <Tooltip
             content={(<CustomTooltip formatter={formatter} />) as never}
-            cursor={{ fill: 'rgba(58,90,64,.06)' }}
+            cursor={{ fill: 'rgba(47,95,216,.06)' }}
           />
           <Bar
             dataKey="value"
@@ -277,7 +279,7 @@ export function HorizontalBarChart({
           />
           <Tooltip
             content={(<CustomTooltip />) as never}
-            cursor={{ fill: 'rgba(58,90,64,.06)' }}
+            cursor={{ fill: 'rgba(46,158,107,.06)' }}
           />
           <Bar
             dataKey="value"
