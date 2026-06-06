@@ -56,7 +56,11 @@ export class CustomersService {
   }
 
   async computeBalance(id: number): Promise<CustomerBalance> {
-    const [creditAgg, paidAgg, lastCredit, lastPayment] = await Promise.all([
+    const [customer, creditAgg, paidAgg, lastCredit, lastPayment] = await Promise.all([
+      this.prisma.customer.findUnique({
+        where: { id },
+        select: { openingDebt: true, createdAt: true },
+      }),
       this.prisma.sale.aggregate({
         where: { customerId: id, paymentType: PaymentType.NASIYA },
         _sum: { totalAmount: true },
@@ -77,7 +81,9 @@ export class CustomersService {
       }),
     ]);
 
-    const totalCredit = creditAgg._sum.totalAmount ?? new D(0);
+    const openingDebt = customer?.openingDebt ?? new D(0);
+    // Jami nasiyaga eski (boshlang'ich) qarzni ham qo'shamiz
+    const totalCredit = (creditAgg._sum.totalAmount ?? new D(0)).plus(openingDebt);
     const totalPaid = paidAgg._sum.amount ?? new D(0);
     return {
       customerId: id,

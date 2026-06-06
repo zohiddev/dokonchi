@@ -26,4 +26,11 @@ export class QuerySalesDto {
   @IsPositive()
   @Max(500)
   limit?: number;
+
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  page?: number;
 }

@@ -10,13 +10,15 @@ import { Modal } from '../components/ui/Modal';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
-import { money } from '../lib/format';
+import { formatThousands, money, parseAmount } from '../lib/format';
+import { moneyField } from '../lib/moneyField';
 import type { Customer } from '../types/api';
 
 interface CustomerFormValues {
   name: string;
   phone?: string;
   notes?: string;
+  openingDebt?: string;
 }
 
 export function CustomersPage() {
@@ -144,12 +146,18 @@ export function CustomersPage() {
         editing={editingCustomer}
         onClose={() => setModalOpen(false)}
         onSubmit={async (v) => {
+          const payload = {
+            name: v.name,
+            phone: v.phone || undefined,
+            notes: v.notes || undefined,
+            openingDebt: parseAmount(v.openingDebt),
+          };
           try {
             if (editingCustomer) {
-              await updateCustomer.mutateAsync({ id: editingCustomer.id, ...v });
+              await updateCustomer.mutateAsync({ id: editingCustomer.id, ...payload });
               toast.success("Mijoz yangilandi");
             } else {
-              await createCustomer.mutateAsync(v);
+              await createCustomer.mutateAsync(payload);
               toast.success("Mijoz qo'shildi");
             }
             setModalOpen(false);
@@ -182,8 +190,13 @@ function CustomerModal({
 }) {
   const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<CustomerFormValues>({
     values: editing
-      ? { name: editing.name, phone: editing.phone ?? '', notes: editing.notes ?? '' }
-      : { name: '', phone: '', notes: '' },
+      ? {
+          name: editing.name,
+          phone: editing.phone ?? '',
+          notes: editing.notes ?? '',
+          openingDebt: formatThousands(editing.openingDebt),
+        }
+      : { name: '', phone: '', notes: '', openingDebt: '' },
   });
 
   return (
@@ -224,6 +237,15 @@ function CustomerModal({
             placeholder="Masalan: do'kondan har payshanba xarid qiladi"
           />
         </Field>
+        <Field label="Eski qarz (ixt.)" error={errors.openingDebt?.message}>
+          <input
+            {...moneyField(register('openingDebt'))}
+            placeholder="0"
+          />
+          <small style={{ color: 'var(--ink-faint)', fontSize: 11, textTransform: 'none', letterSpacing: 0 }}>
+            Appdan oldingi mavjud qarz bo'lsa shu yerga yozing
+          </small>
+        </Field>
       </form>
 
       <style>{`
@@ -252,7 +274,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           background: var(--paper-2);
           outline: none; font-family: inherit;
         }
-        .field input:focus { border-color: var(--green-2); background: var(--card); }
+        .field input:focus { border-color: var(--accent); background: var(--card); }
         .field .err { color: var(--brick); font-size: 12px; }
       `}</style>
     </label>

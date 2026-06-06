@@ -30,6 +30,7 @@ export interface CreateCustomerPayload {
   name: string;
   phone?: string;
   notes?: string;
+  openingDebt?: number;
 }
 
 export function useCreateCustomer() {

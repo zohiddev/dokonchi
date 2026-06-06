@@ -79,7 +79,7 @@ export function Topbar({ onNewSale }: TopbarProps) {
         }
         .btn-new-sale {
           display: inline-flex; align-items: center; gap: 7px;
-          background: var(--green);
+          background: var(--accent);
           color: var(--paper-2);
           font-weight: 600; font-size: 13.5px;
           border: none; border-radius: 11px;

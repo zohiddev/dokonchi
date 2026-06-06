@@ -48,7 +48,7 @@ export function BottomNav({ onMore, moreActive }: BottomNavProps) {
             grid-template-columns: repeat(5, 1fr);
             padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
             z-index: 90;
-            box-shadow: 0 -4px 12px rgba(43, 38, 32, .04);
+            box-shadow: 0 -4px 12px rgba(26, 34, 48, .04);
           }
         }
         .bnav-tab {
@@ -70,7 +70,7 @@ export function BottomNav({ onMore, moreActive }: BottomNavProps) {
           letter-spacing: .2px;
         }
         .bnav-tab.active {
-          color: var(--green);
+          color: var(--accent);
         }
         .bnav-tab.active svg { stroke-width: 2.1; }
         .bnav-tab:active {

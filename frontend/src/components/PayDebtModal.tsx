@@ -4,7 +4,8 @@ import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { extractError } from '../lib/axios';
-import { money } from '../lib/format';
+import { money, parseAmount } from '../lib/format';
+import { moneyField } from '../lib/moneyField';
 
 interface PayFormValues {
   amount: string;
@@ -35,7 +36,7 @@ export function PayDebtModal({ customer, onClose, onPaid }: PayDebtModalProps) {
     try {
       const result = await payDebt.mutateAsync({
         customerId: customer.id,
-        amount: Number(v.amount),
+        amount: parseAmount(v.amount),
         notes: v.notes,
       });
       toast.success("To'lov qabul qilindi");
@@ -72,9 +73,8 @@ export function PayDebtModal({ customer, onClose, onPaid }: PayDebtModalProps) {
       <form className="form" onSubmit={(e) => e.preventDefault()}>
         <Field label="Summa (so'm)" error={errors.amount?.message}>
           <input
-            {...register('amount', { required: 'Summa kerak' })}
-            inputMode="numeric"
-            placeholder="500000"
+            {...moneyField(register('amount', { required: 'Summa kerak' }))}
+            placeholder="500 000"
             autoFocus
           />
         </Field>
@@ -116,7 +116,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           background: var(--paper-2);
           outline: none; font-family: inherit;
         }
-        .field input:focus { border-color: var(--green-2); background: var(--card); }
+        .field input:focus { border-color: var(--accent); background: var(--card); }
         .field .err { color: var(--brick); font-size: 12px; }
       `}</style>
     </label>

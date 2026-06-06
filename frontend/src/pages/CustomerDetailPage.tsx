@@ -137,7 +137,7 @@ export function CustomerDetailPage() {
           font-weight: 500; align-self: flex-start;
           padding: 4px 0;
         }
-        .back-link:hover { color: var(--green); }
+        .back-link:hover { color: var(--accent); }
 
         .head-row {
           display: flex; gap: 16px;
@@ -152,7 +152,7 @@ export function CustomerDetailPage() {
           display: block; color: var(--ink-soft); font-size: 14px;
           margin-top: 4px;
         }
-        .head-info .phone:hover { color: var(--green); }
+        .head-info .phone:hover { color: var(--accent); }
         .head-info .notes {
           color: var(--ink-soft); font-size: 13px;
           margin-top: 6px; max-width: 460px;

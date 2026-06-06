@@ -85,12 +85,15 @@ model Batch {
 }
 
 model Customer {
-  id       Int           @id @default(autoincrement())
-  name     String
-  phone    String?
-  notes    String?
-  sales    Sale[]
-  payments DebtPayment[]
+  id          Int           @id @default(autoincrement())
+  name        String
+  phone       String?
+  notes       String?
+  // Appdan oldingi eski (boshlang'ich) qarz — onboarding paytida kiritiladi
+  openingDebt Decimal       @default(0) @db.Decimal(14, 2)
+  createdAt   DateTime      @default(now())
+  sales       Sale[]
+  payments    DebtPayment[]
 }
 
 model Sale {

@@ -79,7 +79,7 @@ export function LoginPage() {
           place-items: center;
           padding: 24px;
           background:
-            radial-gradient(circle at 20% 10%, var(--green-soft) 0%, transparent 50%),
+            radial-gradient(circle at 20% 10%, var(--accent-soft) 0%, transparent 50%),
             radial-gradient(circle at 90% 90%, var(--amber-soft) 0%, transparent 55%),
             var(--paper);
         }
@@ -101,7 +101,7 @@ export function LoginPage() {
         .login-card .brand .mark {
           width: 44px; height: 44px;
           border-radius: 12px;
-          background: linear-gradient(145deg, var(--green-2), var(--green));
+          background: linear-gradient(145deg, var(--accent-2), var(--accent));
           color: var(--paper-2);
           font-family: 'Fraunces', serif;
           font-weight: 700;
@@ -140,7 +140,7 @@ export function LoginPage() {
           transition: border-color .15s, background .15s;
         }
         .field input:focus {
-          border-color: var(--green-2);
+          border-color: var(--accent);
           background: var(--card);
         }
         .login-err {
@@ -151,7 +151,7 @@ export function LoginPage() {
           font-size: 13px;
         }
         .btn-primary {
-          background: var(--green);
+          background: var(--accent);
           color: var(--paper-2);
           padding: 12px 16px;
           border-radius: 10px;

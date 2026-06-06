@@ -234,7 +234,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
           outline: none; font-family: inherit;
         }
         .field input:focus, .field select:focus {
-          border-color: var(--green-2); background: var(--card);
+          border-color: var(--accent); background: var(--card);
         }
         .field .err { color: var(--brick); font-size: 12px; }
       `}</style>

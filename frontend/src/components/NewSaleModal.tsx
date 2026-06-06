@@ -9,7 +9,7 @@ import { Spinner } from './ui/Spinner';
 import { useToast } from './ui/Toast';
 import { usePrinter } from './PrinterContext';
 import { extractError } from '../lib/axios';
-import { money, qty as qtyFmt } from '../lib/format';
+import { formatThousands, money, parseAmount, qty as qtyFmt } from '../lib/format';
 import type { InventoryRow, PaymentType } from '../types/api';
 
 interface NewSaleModalProps {
@@ -161,7 +161,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      next.set(productId, { ...line, unitPrice: Math.max(0, Number(value) || 0) });
+      next.set(productId, { ...line, unitPrice: Math.max(0, parseAmount(value)) });
       return next;
     });
   };
@@ -348,7 +348,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
                   <span className="x">×</span>
                   <input
                     className="price-input num"
-                    value={line.unitPrice}
+                    value={formatThousands(line.unitPrice)}
                     onChange={(e) => setPrice(line.productId, e.target.value)}
                     inputMode="numeric"
                   />
@@ -520,7 +520,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
         }
         .pill:hover { color: var(--ink); border-color: var(--line-strong); }
         .pill.active {
-          background: var(--green); color: var(--paper-2); border-color: var(--green);
+          background: var(--accent); color: var(--paper-2); border-color: var(--accent);
         }
 
         .grid {
@@ -552,8 +552,8 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           transition: transform .12s, border-color .12s, box-shadow .12s;
         }
         .pcard:hover:not(:disabled) {
-          border-color: var(--green-2);
-          box-shadow: 0 4px 12px rgba(58, 90, 64, 0.08);
+          border-color: var(--accent);
+          box-shadow: 0 4px 12px rgba(47, 95, 216, 0.08);
           transform: translateY(-1px);
         }
         .pcard:active:not(:disabled) { transform: translateY(0); }
@@ -561,7 +561,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           opacity: .45; cursor: not-allowed;
           background: var(--paper);
         }
-        .pcard.inCart { border-color: var(--green); border-width: 2px; padding: 11px 11px 9px; }
+        .pcard.inCart { border-color: var(--accent); border-width: 2px; padding: 11px 11px 9px; }
         .pcard-name {
           font-size: 13px; font-weight: 600; color: var(--ink);
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
@@ -585,11 +585,11 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
         .pcard-stock.no { color: var(--brick); }
         .pcard-badge {
           position: absolute; top: -7px; right: -7px;
-          background: var(--green); color: var(--paper-2);
+          background: var(--accent); color: var(--paper-2);
           font-size: 11px; font-weight: 700;
           width: 22px; height: 22px; border-radius: 11px;
           display: grid; place-items: center;
-          box-shadow: 0 2px 6px rgba(43,38,32,.18);
+          box-shadow: 0 2px 6px rgba(26, 34, 48,.18);
         }
 
         .pos-right {
@@ -671,7 +671,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           outline: none; font-family: 'IBM Plex Mono', monospace;
           font-size: 12.5px;
         }
-        .price-input:focus { border-color: var(--green-2); background: var(--card); }
+        .price-input:focus { border-color: var(--accent); background: var(--card); }
         .cart-line-total {
           text-align: right;
           font-size: 13.5px; font-weight: 700; color: var(--green);
@@ -722,7 +722,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
         }
         .paytab .ic { font-size: 18px; }
         .paytab:hover { color: var(--ink); }
-        .paytab.active { background: var(--green); color: var(--paper-2); }
+        .paytab.active { background: var(--accent); color: var(--paper-2); }
 
         .cust-block { display: flex; flex-direction: column; gap: 5px; }
         .cust-block .lbl {
@@ -737,21 +737,21 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           font-family: inherit; font-size: 13px;
           outline: none;
         }
-        .cust-row select:focus { border-color: var(--green-2); }
+        .cust-row select:focus { border-color: var(--accent); }
         .add-cust {
           background: var(--card);
-          border: 1px dashed var(--green-2);
-          color: var(--green);
+          border: 1px dashed var(--accent);
+          color: var(--accent);
           padding: 0 12px; border-radius: 8px;
           font-size: 12px; font-weight: 600;
           cursor: pointer; font-family: inherit;
           white-space: nowrap;
         }
-        .add-cust:hover { background: var(--green-soft); }
+        .add-cust:hover { background: var(--accent-soft); }
 
         .newcust {
           background: var(--card);
-          border: 1px solid var(--green-2);
+          border: 1px solid var(--accent);
           border-radius: 10px;
           padding: 11px;
           display: flex; flex-direction: column; gap: 7px;
@@ -759,7 +759,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
         .newcust-head {
           display: flex; justify-content: space-between; align-items: baseline;
         }
-        .newcust-head strong { font-size: 13px; color: var(--green); }
+        .newcust-head strong { font-size: 13px; color: var(--accent); }
         .newcust-head .cancel {
           background: none; border: none; color: var(--ink-soft);
           font-size: 12px; cursor: pointer; padding: 0;
@@ -771,7 +771,7 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           border-radius: 7px; background: var(--paper-2);
           font-family: inherit; font-size: 13px; outline: none;
         }
-        .newcust input:focus { border-color: var(--green-2); background: var(--card); }
+        .newcust input:focus { border-color: var(--accent); background: var(--card); }
 
         .notes-input {
           padding: 9px 12px;
@@ -779,16 +779,16 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           border-radius: 8px; background: var(--card);
           font-family: inherit; font-size: 13px; outline: none;
         }
-        .notes-input:focus { border-color: var(--green-2); }
+        .notes-input:focus { border-color: var(--accent); }
 
         .save {
-          background: var(--green); color: var(--paper-2);
+          background: var(--accent); color: var(--paper-2);
           border: none; border-radius: 11px;
           padding: 13px 16px;
           font-family: inherit; font-size: 14px; font-weight: 600;
           cursor: pointer;
           display: flex; justify-content: space-between; align-items: center;
-          box-shadow: 0 4px 12px rgba(58,90,64,.18);
+          box-shadow: 0 4px 12px rgba(47,95,216,.18);
           transition: filter .15s, transform .15s;
         }
         .save:hover:not(.disabled) { filter: brightness(1.08); transform: translateY(-1px); }

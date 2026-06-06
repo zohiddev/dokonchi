@@ -4,20 +4,31 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { FilterTabs } from '../components/ui/FilterTabs';
+import { Pagination } from '../components/ui/Pagination';
 import { PaymentTag } from '../components/ui/Tag';
 import { useNewSale } from '../components/NewSaleContext';
 import { dateTime, money } from '../lib/format';
 import type { PaymentType, Sale } from '../types/api';
 
 type PayFilter = 'ALL' | PaymentType;
+const PAGE_SIZE = 15;
 
 export function SalesPage() {
   const { open } = useNewSale();
   const [payFilter, setPayFilter] = useState<PayFilter>('ALL');
+  const [page, setPage] = useState(1);
+
+  const changeFilter = (f: PayFilter) => {
+    setPayFilter(f);
+    setPage(1); // filtr o'zgarsa 1-sahifaga
+  };
+
   const sales = useSales({
     paymentType: payFilter === 'ALL' ? undefined : payFilter,
-    limit: 100,
+    page,
+    limit: PAGE_SIZE,
   });
+  const total = sales.data?.total ?? 0;
 
   const columns: Column<Sale>[] = [
     {
@@ -80,7 +91,7 @@ export function SalesPage() {
       <div className="page-toolbar">
         <FilterTabs<PayFilter>
           value={payFilter}
-          onChange={setPayFilter}
+          onChange={changeFilter}
           options={[
             { value: 'ALL', label: 'Barchasi' },
             { value: 'NAQD', label: 'Naqd' },
@@ -96,10 +107,18 @@ export function SalesPage() {
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={sales.data}
+          data={sales.data?.items}
           rowKey={(s) => s.id}
           isLoading={sales.isLoading}
           emptyTitle="Sotuvlar yo'q"
+          pageSize={false}
+        />
+        <Pagination
+          page={page}
+          pageCount={Math.ceil(total / PAGE_SIZE)}
+          onChange={setPage}
+          totalItems={total}
+          pageSize={PAGE_SIZE}
         />
       </Card>
 

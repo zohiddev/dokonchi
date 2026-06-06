@@ -145,6 +145,7 @@ export function ExpensesPage() {
           isLoading={expenses.isLoading}
           emptyTitle="Xarajat yo'q"
           emptyDescription="Bu oyda xarajat qayd etilmagan"
+          resetKey={month}
         />
       </Card>
 

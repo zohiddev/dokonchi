@@ -93,7 +93,7 @@ export function MobileMenuDrawer({ open, onClose }: MobileMenuDrawerProps) {
       <style>{`
         .drawer-overlay {
           position: fixed; inset: 0;
-          background: rgba(43, 38, 32, .5);
+          background: rgba(26, 34, 48, .5);
           backdrop-filter: blur(2px);
           z-index: 110;
           display: flex;
@@ -108,7 +108,7 @@ export function MobileMenuDrawer({ open, onClose }: MobileMenuDrawerProps) {
           max-height: 88vh;
           overflow-y: auto;
           animation: dr-slide .25s cubic-bezier(.2,.7,.3,1);
-          box-shadow: 0 -8px 28px rgba(43, 38, 32, .18);
+          box-shadow: 0 -8px 28px rgba(26, 34, 48, .18);
         }
         .drawer-handle {
           width: 42px; height: 4px;
@@ -160,7 +160,7 @@ export function MobileMenuDrawer({ open, onClose }: MobileMenuDrawerProps) {
           transition: transform .12s, background .12s;
         }
         .dcell:active { transform: scale(.96); background: var(--paper); }
-        .dcell.active { border-color: var(--green); background: var(--green-soft); }
+        .dcell.active { border-color: var(--accent); background: var(--accent-soft); }
         .dcell-ic {
           width: 36px; height: 36px;
           border-radius: 9px;
@@ -170,7 +170,7 @@ export function MobileMenuDrawer({ open, onClose }: MobileMenuDrawerProps) {
         .dcell.tone-green .dcell-ic { background: var(--green-soft); color: var(--green); }
         .dcell.tone-amber .dcell-ic { background: var(--amber-soft); color: var(--amber); }
         .dcell.tone-brick .dcell-ic { background: var(--brick-soft); color: var(--brick); }
-        .dcell.active .dcell-ic { background: var(--green); color: var(--paper-2); }
+        .dcell.active .dcell-ic { background: var(--accent); color: var(--paper-2); }
 
         .logout-row {
           width: 100%;

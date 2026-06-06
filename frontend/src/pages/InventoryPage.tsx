@@ -126,7 +126,7 @@ export function InventoryPage() {
         }
         .info-block svg {
           width: 22px; height: 22px;
-          color: var(--green-2); flex-shrink: 0; margin-top: 2px;
+          color: var(--accent); flex-shrink: 0; margin-top: 2px;
         }
         .info-block strong {
           color: var(--ink); font-size: 14px; font-weight: 600;
@@ -141,7 +141,7 @@ export function InventoryPage() {
           color: var(--ink-soft); font-weight: 600;
         }
         .value-block strong {
-          font-size: 26px; color: var(--green); letter-spacing: -.3px;
+          font-size: 26px; color: var(--accent); letter-spacing: -.3px;
         }
         .value-block small:last-child { color: var(--ink-faint); font-size: 12px; }
         @media (max-width: 880px) {

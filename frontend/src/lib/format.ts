@@ -9,6 +9,21 @@ export function money(value: number | string | null | undefined, withCurrency = 
   return withCurrency ? `${formatted} so'm` : formatted;
 }
 
+// Summa inputi uchun: raqamni "100 000" ko'rinishida formatlaydi (faqat butun)
+export function formatThousands(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return '';
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+// "100 000" → 100000 (bo'sh joylarni olib tashlaydi)
+export function parseAmount(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const digits = String(value).replace(/\D/g, '');
+  return digits ? Number(digits) : 0;
+}
+
 // Miqdor: "12.5 kg" yoki "5 dona"
 export function qty(value: number | string | null | undefined, unit?: string | null): string {
   if (value === null || value === undefined || value === '') return '—';

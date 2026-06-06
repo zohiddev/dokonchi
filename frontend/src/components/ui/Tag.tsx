@@ -25,7 +25,7 @@ export function Tag({
         .tag-green { background: var(--green-soft); color: var(--green); }
         .tag-amber { background: var(--amber-soft); color: var(--amber); }
         .tag-brick { background: var(--brick-soft); color: var(--brick); }
-        .tag-gray  { background: #e9e2d4; color: var(--ink-soft); }
+        .tag-gray  { background: #eef1f5; color: var(--ink-soft); }
       `}</style>
     </span>
   );

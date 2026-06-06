@@ -16,7 +16,12 @@ export class DebtsService {
   // Qarzdor mijozlar (balans > 0)
   async findAll() {
     const customers = await this.prisma.customer.findMany({
-      where: { sales: { some: { paymentType: PaymentType.NASIYA } } },
+      where: {
+        OR: [
+          { sales: { some: { paymentType: PaymentType.NASIYA } } },
+          { openingDebt: { gt: 0 } },
+        ],
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -67,7 +72,11 @@ export class DebtsService {
 
   // Mijoz nasiya/to'lov tarixi — items + running balance bilan boyitilgan
   async history(customerId: number) {
-    const [sales, payments] = await Promise.all([
+    const [customer, sales, payments] = await Promise.all([
+      this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { openingDebt: true, createdAt: true },
+      }),
       this.prisma.sale.findMany({
         where: { customerId, paymentType: PaymentType.NASIYA },
         select: {
@@ -153,15 +162,34 @@ export class DebtsService {
     }));
 
     // Xronologik (ASC) tartibda birlashtiramiz va running balance hisoblaymiz
-    const all: Entry[] = [...credits, ...debits].sort(
+    const sorted: Entry[] = [...credits, ...debits].sort(
       (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
-    let running = new D(0);
-    for (const e of all) {
+    // Eski (boshlang'ich) qarz — hammasidan oldingi birinchi yozuv
+    const openingDebt = customer?.openingDebt ?? new D(0);
+    let running = openingDebt;
+    const openingEntry: CreditEntry | null = openingDebt.gt(0)
+      ? {
+          type: 'credit',
+          id: 0,
+          date: customer?.createdAt ?? new Date(),
+          amount: openingDebt,
+          totalCost: new D(0),
+          profit: new D(0),
+          notes: null,
+          items: [],
+          summary: "Eski qarz (boshlang'ich)",
+          runningBalance: openingDebt,
+        }
+      : null;
+
+    for (const e of sorted) {
       running = e.type === 'credit' ? running.plus(e.amount) : running.minus(e.amount);
       e.runningBalance = running;
     }
+
+    const all: Entry[] = openingEntry ? [openingEntry, ...sorted] : sorted;
 
     // UI uchun DESC — eng yangisi tepada
     return all.reverse();

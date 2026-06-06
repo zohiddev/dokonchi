@@ -49,7 +49,7 @@ export function FilterTabs<T extends string | number>({ value, options, onChange
         .tab.active {
           background: var(--card);
           color: var(--ink);
-          box-shadow: 0 1px 2px rgba(43, 38, 32, .06);
+          box-shadow: 0 1px 2px rgba(26, 34, 48, .06);
         }
         .tab-count {
           font-size: 10.5px;
@@ -59,8 +59,8 @@ export function FilterTabs<T extends string | number>({ value, options, onChange
           color: var(--ink-soft);
         }
         .tab.active .tab-count {
-          background: var(--green-soft);
-          color: var(--green);
+          background: var(--accent-soft);
+          color: var(--accent);
         }
       `}</style>
     </div>
