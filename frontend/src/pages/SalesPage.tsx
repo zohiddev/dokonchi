@@ -1,40 +1,53 @@
 import { useState } from 'react';
 import { useSales } from '../api/sales';
+import { useCustomers } from '../api/customers';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { FilterTabs } from '../components/ui/FilterTabs';
+import { FilterBar, FilterSelect, SearchableSelect, DateRangeField, type SelectOption } from '../components/ui/Filters';
 import { Pagination } from '../components/ui/Pagination';
 import { PaymentTag } from '../components/ui/Tag';
 import { useNewSale } from '../components/NewSaleContext';
 import { dateTime, money } from '../lib/format';
 import type { PaymentType, Sale } from '../types/api';
 
-type PayFilter = 'ALL' | PaymentType;
 const PAGE_SIZE = 15;
 
 export function SalesPage() {
   const { open } = useNewSale();
-  const [payFilter, setPayFilter] = useState<PayFilter>('ALL');
+  const customers = useCustomers();
+
+  const [payFilter, setPayFilter] = useState<PaymentType | ''>('');
+  const [customerId, setCustomerId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
 
-  const changeFilter = (f: PayFilter) => {
-    setPayFilter(f);
-    setPage(1); // filtr o'zgarsa 1-sahifaga
-  };
+  const hasFilter = !!(payFilter || customerId || from || to);
+  const reset1 = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setPage(1); };
+  const clearAll = () => { setPayFilter(''); setCustomerId(''); setFrom(''); setTo(''); setPage(1); };
 
   const sales = useSales({
-    paymentType: payFilter === 'ALL' ? undefined : payFilter,
+    paymentType: payFilter || undefined,
+    customerId: customerId ? Number(customerId) : undefined,
+    from: from || undefined,
+    to: to || undefined,
     page,
     limit: PAGE_SIZE,
   });
   const total = sales.data?.total ?? 0;
+
+  const customerOptions: SelectOption[] = [
+    { value: '', label: 'Barcha mijoz' },
+    ...(customers.data ?? []).map((c) => ({ value: String(c.id), label: c.name })),
+  ];
 
   const columns: Column<Sale>[] = [
     {
       key: 'date',
       header: 'Vaqt',
       render: (s) => <span className="num" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{dateTime(s.saleDate)}</span>,
+      footer: () => 'Jami',
       width: '150px',
     },
     {
@@ -64,6 +77,10 @@ export function SalesPage() {
       key: 'amount',
       header: 'Summa',
       render: (s) => <span className="num">{money(s.totalAmount)}</span>,
+      footer: (rows) => {
+        const sum = rows.reduce((acc, s) => acc + Number(s.totalAmount), 0);
+        return <span className="num">{money(sum)}</span>;
+      },
       align: 'right',
       width: '150px',
     },
@@ -71,6 +88,10 @@ export function SalesPage() {
       key: 'cost',
       header: 'Tannarx',
       render: (s) => <span className="num" style={{ color: 'var(--ink-soft)' }}>{money(s.totalCost)}</span>,
+      footer: (rows) => {
+        const sum = rows.reduce((acc, s) => acc + Number(s.totalCost), 0);
+        return <span className="num" style={{ color: 'var(--ink-soft)' }}>{money(sum)}</span>;
+      },
       align: 'right',
       width: '150px',
     },
@@ -81,6 +102,10 @@ export function SalesPage() {
         const p = Number(s.totalAmount) - Number(s.totalCost);
         return <span className="num" style={{ color: p > 0 ? 'var(--green-2)' : 'var(--ink-soft)', fontWeight: 600 }}>{money(p)}</span>;
       },
+      footer: (rows) => {
+        const p = rows.reduce((acc, s) => acc + (Number(s.totalAmount) - Number(s.totalCost)), 0);
+        return <span className="num" style={{ color: p > 0 ? 'var(--green-2)' : 'var(--ink-soft)' }}>{money(p)}</span>;
+      },
       align: 'right',
       width: '160px',
     },
@@ -88,21 +113,40 @@ export function SalesPage() {
 
   return (
     <div>
-      <div className="page-toolbar">
-        <FilterTabs<PayFilter>
+      <FilterBar
+        action={
+          <Button onClick={open} icon={<IconPlus />}>
+            Yangi sotuv
+          </Button>
+        }
+      >
+        <FilterSelect
           value={payFilter}
-          onChange={changeFilter}
+          onChange={reset1((v) => setPayFilter(v as PaymentType | ''))}
+          ariaLabel="To'lov turi"
           options={[
-            { value: 'ALL', label: 'Barchasi' },
+            { value: '', label: "Barcha to'lov" },
             { value: 'NAQD', label: 'Naqd' },
             { value: 'KARTA', label: 'Karta' },
             { value: 'NASIYA', label: 'Nasiya' },
           ]}
         />
-        <Button onClick={open} icon={<IconPlus />}>
-          Yangi sotuv
-        </Button>
-      </div>
+        <SearchableSelect
+          value={customerId}
+          onChange={reset1(setCustomerId)}
+          ariaLabel="Mijoz"
+          options={customerOptions}
+          placeholder="Mijoz qidirish..."
+        />
+        <DateRangeField
+          from={from}
+          to={to}
+          onChange={(f, t) => { setFrom(f); setTo(t); setPage(1); }}
+        />
+        {hasFilter && (
+          <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>
+        )}
+      </FilterBar>
 
       <Card padding={false}>
         <DataTable
@@ -111,6 +155,7 @@ export function SalesPage() {
           rowKey={(s) => s.id}
           isLoading={sales.isLoading}
           emptyTitle="Sotuvlar yo'q"
+          emptyDescription={hasFilter ? "Filtrga mos sotuv topilmadi" : undefined}
           pageSize={false}
         />
         <Pagination
@@ -121,13 +166,6 @@ export function SalesPage() {
           pageSize={PAGE_SIZE}
         />
       </Card>
-
-      <style>{`
-        .page-toolbar {
-          display: flex; align-items: center; justify-content: space-between;
-          gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
-        }
-      `}</style>
     </div>
   );
 }

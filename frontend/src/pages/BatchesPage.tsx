@@ -1,44 +1,20 @@
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { useBatches, useCreateBatch } from '../api/batches';
+import { useBatches } from '../api/batches';
 import { useProducts } from '../api/products';
 import { useSuppliers } from '../api/suppliers';
+import { NewBatchModal } from '../components/NewBatchModal';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { FilterTabs } from '../components/ui/FilterTabs';
-import { Modal } from '../components/ui/Modal';
+import { FilterBar, FilterSelect, SearchInput, DateRangeField, type SelectOption } from '../components/ui/Filters';
 import { StatusPill } from '../components/ui/Tag';
 import { StockBar } from '../components/ui/StockBar';
-import { useToast } from '../components/ui/Toast';
-import { extractError } from '../lib/axios';
-import { dateOnlyToIso } from '../lib/date';
-import { date, money, parseAmount } from '../lib/format';
-import { moneyField } from '../lib/moneyField';
+import { date, money } from '../lib/format';
 import type { Batch } from '../types/api';
 
-type FilterTab = 'this-week' | 'all' | 'finished';
+type BatchStatus = 'active' | 'slow' | 'old' | 'finished';
 
-interface BatchFormValues {
-  productId: number;
-  supplierId?: number;
-  receivedDate: string;
-  quantityReceived: string;
-  costPricePerUnit: string;
-  salePricePerUnit?: string;
-  notes?: string;
-}
-
-function isoWeekLabel(d: Date): string {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNr = (t.getUTCDay() + 6) % 7;
-  t.setUTCDate(t.getUTCDate() - dayNr + 3);
-  const firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
-  const week = 1 + Math.round((t.getTime() - firstThu.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  return `${t.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
-
-function batchStatus(b: Batch): 'active' | 'slow' | 'old' | 'finished' {
+function batchStatus(b: Batch): BatchStatus {
   const rem = Number(b.quantityRemaining);
   const recv = Number(b.quantityReceived);
   if (rem <= 0) return 'finished';
@@ -50,20 +26,51 @@ function batchStatus(b: Batch): 'active' | 'slow' | 'old' | 'finished' {
 }
 
 export function BatchesPage() {
-  const toast = useToast();
-  const [tab, setTab] = useState<FilterTab>('all');
-  const products = useProducts();
-  const suppliers = useSuppliers();
   const [modalOpen, setModalOpen] = useState(false);
+  const batches = useBatches({});
+  const products = useProducts({});
+  const suppliers = useSuppliers();
 
-  const filter = useMemo(() => {
-    if (tab === 'this-week') return { weekLabel: isoWeekLabel(new Date()) };
-    if (tab === 'finished') return { status: 'finished' as const };
-    return {};
-  }, [tab]);
+  // Filtrlar (client-side)
+  const [search, setSearch] = useState('');
+  const [productId, setProductId] = useState('all');
+  const [supplierId, setSupplierId] = useState('all');
+  const [status, setStatus] = useState<'all' | BatchStatus>('all');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
-  const batches = useBatches(filter);
-  const createBatch = useCreateBatch();
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (batches.data ?? []).filter((b) => {
+      if (productId !== 'all' && b.productId !== Number(productId)) return false;
+      if (supplierId === 'none' && b.supplierId) return false;
+      if (supplierId !== 'all' && supplierId !== 'none' && b.supplierId !== Number(supplierId)) return false;
+      if (status !== 'all' && batchStatus(b) !== status) return false;
+      const day = b.receivedDate.slice(0, 10);
+      if (from && day < from) return false;
+      if (to && day > to) return false;
+      if (q) {
+        const hay = `${b.product?.name ?? ''} ${b.supplier?.name ?? ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [batches.data, search, productId, supplierId, status, from, to]);
+
+  const productOptions: SelectOption[] = [
+    { value: 'all', label: 'Barcha mahsulot' },
+    ...(products.data ?? []).map((p) => ({ value: String(p.id), label: p.name })),
+  ];
+  const supplierOptions: SelectOption[] = [
+    { value: 'all', label: "Barcha ta'minotchi" },
+    { value: 'none', label: "Ta'minotchisiz" },
+    ...(suppliers.data ?? []).map((s) => ({ value: String(s.id), label: s.name })),
+  ];
+
+  const hasFilter = !!(search || productId !== 'all' || supplierId !== 'all' || status !== 'all' || from || to);
+  const clearAll = () => {
+    setSearch(''); setProductId('all'); setSupplierId('all'); setStatus('all'); setFrom(''); setTo('');
+  };
 
   const columns: Column<Batch>[] = [
     {
@@ -120,166 +127,50 @@ export function BatchesPage() {
 
   return (
     <div>
-      <div className="page-toolbar">
-        <FilterTabs<FilterTab>
-          value={tab}
-          onChange={setTab}
+      <FilterBar
+        action={
+          <Button onClick={() => setModalOpen(true)} icon={<IconPlus />}>
+            Yangi partiya
+          </Button>
+        }
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Mahsulot yoki ta'minotchi..." />
+        <FilterSelect value={productId} onChange={setProductId} ariaLabel="Mahsulot" options={productOptions} />
+        <FilterSelect value={supplierId} onChange={setSupplierId} ariaLabel="Ta'minotchi" options={supplierOptions} />
+        <FilterSelect
+          value={status}
+          onChange={(v) => setStatus(v as 'all' | BatchStatus)}
+          ariaLabel="Holat"
           options={[
-            { value: 'all', label: 'Barchasi' },
-            { value: 'this-week', label: 'Joriy hafta' },
-            { value: 'finished', label: 'Tugaganlar' },
+            { value: 'all', label: 'Barcha holat' },
+            { value: 'active', label: 'Sotilyapti' },
+            { value: 'slow', label: 'Sekin' },
+            { value: 'old', label: 'Eski' },
+            { value: 'finished', label: 'Tugagan' },
           ]}
         />
-        <Button onClick={() => setModalOpen(true)} icon={<IconPlus />}>
-          Yangi partiya
-        </Button>
-      </div>
+        <DateRangeField
+          from={from}
+          to={to}
+          onChange={(f, t) => { setFrom(f); setTo(t); }}
+        />
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
 
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={batches.data}
+          data={filtered}
           rowKey={(b) => b.id}
           isLoading={batches.isLoading}
           emptyTitle="Partiya yo'q"
+          emptyDescription={hasFilter ? 'Filtrga mos partiya topilmadi' : undefined}
+          resetKey={`${search}|${productId}|${supplierId}|${status}|${from}|${to}`}
         />
       </Card>
 
-      <NewBatchModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        products={products.data ?? []}
-        suppliers={suppliers.data ?? []}
-        onSubmit={async (v) => {
-          try {
-            await createBatch.mutateAsync({
-              productId: Number(v.productId),
-              supplierId: v.supplierId ? Number(v.supplierId) : undefined,
-              receivedDate: dateOnlyToIso(v.receivedDate),
-              quantityReceived: Number(v.quantityReceived),
-              costPricePerUnit: parseAmount(v.costPricePerUnit),
-              salePricePerUnit: v.salePricePerUnit ? parseAmount(v.salePricePerUnit) : undefined,
-              notes: v.notes || undefined,
-            });
-            toast.success("Partiya qo'shildi");
-            setModalOpen(false);
-          } catch (e) {
-            toast.error(extractError(e));
-          }
-        }}
-      />
-
-      <style>{`
-        .page-toolbar {
-          display: flex; align-items: center;
-          justify-content: space-between;
-          gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
-        }
-      `}</style>
+      <NewBatchModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
-  );
-}
-
-interface NewBatchModalProps {
-  open: boolean;
-  onClose: () => void;
-  products: { id: number; name: string }[];
-  suppliers: { id: number; name: string }[];
-  onSubmit: (v: BatchFormValues) => Promise<void>;
-}
-
-function NewBatchModal({ open, onClose, products, suppliers, onSubmit }: NewBatchModalProps) {
-  const today = new Date().toISOString().slice(0, 10);
-  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<BatchFormValues>({
-    defaultValues: { receivedDate: today },
-  });
-
-  return (
-    <Modal
-      open={open}
-      onClose={() => { reset(); onClose(); }}
-      title="Yangi partiya"
-      width={520}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>Bekor</Button>
-          <Button onClick={handleSubmit(async (v) => { await onSubmit(v); reset({ receivedDate: today }); })} disabled={isSubmitting}>
-            {isSubmitting ? 'Saqlanmoqda...' : 'Saqlash'}
-          </Button>
-        </>
-      }
-    >
-      <form className="form" onSubmit={(e) => e.preventDefault()}>
-        <Field label="Mahsulot" error={errors.productId?.message}>
-          <select {...register('productId', { required: 'Mahsulot kerak', valueAsNumber: true })} autoFocus>
-            <option value="">— tanlang —</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </Field>
-        <div className="form-row">
-          <Field label="Ta'minotchi">
-            <select {...register('supplierId', { valueAsNumber: true })}>
-              <option value="">— ixtiyoriy —</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Sana" error={errors.receivedDate?.message}>
-            <input type="date" {...register('receivedDate', { required: 'Sana kerak' })} />
-          </Field>
-        </div>
-        <Field label="Kelgan miqdor" error={errors.quantityReceived?.message}>
-          <input {...register('quantityReceived', { required: 'Miqdor kerak' })} inputMode="decimal" placeholder="50" />
-        </Field>
-        <div className="form-row">
-          <Field label="Kirim narxi (so'm)" error={errors.costPricePerUnit?.message}>
-            <input {...moneyField(register('costPricePerUnit', { required: "Narx kerak" }))} placeholder="240 000" />
-          </Field>
-          <Field label="Sotuv narxi (ixt.)">
-            <input {...moneyField(register('salePricePerUnit'))} placeholder="280 000" />
-          </Field>
-        </div>
-        <Field label="Izoh (ixt.)">
-          <input {...register('notes')} />
-        </Field>
-      </form>
-      <style>{`
-        .form { display: flex; flex-direction: column; gap: 13px; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      `}</style>
-    </Modal>
-  );
-}
-
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-      {error && <small className="err">{error}</small>}
-      <style>{`
-        .field { display: flex; flex-direction: column; gap: 5px; }
-        .field span {
-          font-size: 12px; color: var(--ink-soft); font-weight: 500;
-          text-transform: uppercase; letter-spacing: .4px;
-        }
-        .field input, .field select {
-          padding: 10px 12px;
-          border: 1px solid var(--line-strong);
-          border-radius: 9px;
-          background: var(--paper-2);
-          outline: none; font-family: inherit;
-        }
-        .field input:focus, .field select:focus {
-          border-color: var(--accent);
-          background: var(--card);
-        }
-        .field .err { color: var(--brick); font-size: 12px; }
-      `}</style>
-    </label>
   );
 }
 

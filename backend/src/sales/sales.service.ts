@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PaymentType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { QuerySalesDto } from './dto/query-sales.dto';
 import { FifoAllocation, FifoService } from './fifo.service';
@@ -34,11 +35,13 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fifo: FifoService,
+    private readonly telegram: TelegramService,
   ) {}
 
   async findAll(query: QuerySalesDto) {
     const where: Prisma.SaleWhereInput = {};
     if (query.paymentType) where.paymentType = query.paymentType;
+    if (query.customerId !== undefined) where.customerId = query.customerId;
     if (query.from || query.to) {
       where.saleDate = {};
       if (query.from) where.saleDate.gte = new Date(query.from);
@@ -146,7 +149,7 @@ export class SalesService {
       if (!customer) throw new BadRequestException('Mijoz topilmadi');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const sale = await this.prisma.$transaction(async (tx) => {
       // Mahsulotlarni oldindan tekshirish
       const productIds = Array.from(new Set(dto.items.map((i) => i.productId)));
       const products = await tx.product.findMany({
@@ -227,6 +230,13 @@ export class SalesService {
 
       return sale;
     });
+
+    // Mijozga Telegram bildirishnoma (fire-and-forget — savdoni bloklamaydi)
+    if (sale.customerId) {
+      void this.telegram.notifySale(sale.id);
+    }
+
+    return sale;
   }
 
   private validatePayment(dto: CreateSaleDto): void {

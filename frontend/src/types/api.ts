@@ -54,7 +54,15 @@ export interface Supplier {
   name: string;
   phone: string | null;
   notes: string | null;
+  telegramChatId?: string | null;
   _count?: { batches: number };
+  // /suppliers ro'yxatida boyitilgan oldi-berdi ko'rsatkichlari (ixtiyoriy)
+  batchCount?: number;
+  totalPurchased?: string;
+  totalPaid?: string;
+  balance?: string;
+  soldCostValue?: string;
+  remainingCostValue?: string;
 }
 
 export interface Batch {
@@ -113,6 +121,7 @@ export interface Customer {
   phone: string | null;
   notes: string | null;
   openingDebt: string;
+  telegramChatId?: string | null;
 }
 
 export interface CustomerBalance {
@@ -139,7 +148,7 @@ export interface InventoryRow {
 }
 
 export interface DashboardData {
-  today: { revenue: string; profit: string; salesCount: number };
+  today: { revenue: string; profit: string; salesCount: number; newCredit: string; expenses: string };
   thisWeek: { revenue: string; profit: string };
   debts: { totalDebt: string; debtorCount: number };
   inventory: { totalValue: string; batchCount: number };

@@ -30,6 +30,7 @@ export interface CreateBatchPayload {
   quantityReceived: number;
   costPricePerUnit: number;
   salePricePerUnit?: number;
+  amountPaid?: number; // shu partiya uchun darhol to'langan (ta'minotchi tanlangan bo'lsa)
   notes?: string;
 }
 
@@ -42,6 +43,7 @@ export function useCreateBatch() {
       qc.invalidateQueries({ queryKey: ['batches'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['suppliers'] }); // ta'minotchi qarzi yangilanadi
       qc.invalidateQueries({ queryKey: ['cash'] }); // partiya xaridi → kassa chiqimi
     },
   });

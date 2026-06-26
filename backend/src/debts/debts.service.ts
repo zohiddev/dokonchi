@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaymentType, Prisma } from '@prisma/client';
 import { CustomersService } from '../customers/customers.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 
 const D = Prisma.Decimal;
@@ -11,6 +12,7 @@ export class DebtsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly customers: CustomersService,
+    private readonly telegram: TelegramService,
   ) {}
 
   // Qarzdor mijozlar (balans > 0)
@@ -66,11 +68,16 @@ export class DebtsService {
       include: { customer: true },
     });
 
+    // Mijozga Telegram bildirishnoma (fire-and-forget)
+    void this.telegram.notifyPayment(payment.id);
+
     const balance = await this.customers.computeBalance(dto.customerId);
     return { payment, balance };
   }
 
-  // Mijoz nasiya/to'lov tarixi — items + running balance bilan boyitilgan
+  // Mijozning to'liq oldi-sotdi tarixi — BARCHA sotuvlar (naqd/karta/nasiya) +
+  // to'lovlar. Qarz running-balance'i FAQAT nasiya sotuv va to'lovdan o'zgaradi;
+  // naqd/karta xaridlar tarixda ko'rinadi, lekin qarzga ta'sir qilmaydi.
   async history(customerId: number) {
     const [customer, sales, payments] = await Promise.all([
       this.prisma.customer.findUnique({
@@ -78,10 +85,11 @@ export class DebtsService {
         select: { openingDebt: true, createdAt: true },
       }),
       this.prisma.sale.findMany({
-        where: { customerId, paymentType: PaymentType.NASIYA },
+        where: { customerId },
         select: {
           id: true,
           saleDate: true,
+          paymentType: true,
           totalAmount: true,
           totalCost: true,
           notes: true,
@@ -103,8 +111,10 @@ export class DebtsService {
       }),
     ]);
 
-    type CreditEntry = {
-      type: 'credit';
+    type SaleEntry = {
+      type: 'sale';
+      paymentType: PaymentType;
+      isOpening?: boolean;
       id: number;
       date: Date;
       amount: Prisma.Decimal;
@@ -130,10 +140,11 @@ export class DebtsService {
       summary: string;
       runningBalance: Prisma.Decimal;
     };
-    type Entry = CreditEntry | PaymentEntry;
+    type Entry = SaleEntry | PaymentEntry;
 
-    const credits: CreditEntry[] = sales.map((s) => ({
-      type: 'credit',
+    const saleEntries: SaleEntry[] = sales.map((s) => ({
+      type: 'sale',
+      paymentType: s.paymentType,
       id: s.id,
       date: s.saleDate,
       amount: s.totalAmount,
@@ -151,7 +162,7 @@ export class DebtsService {
       runningBalance: new D(0), // pastda hisoblanadi
     }));
 
-    const debits: PaymentEntry[] = payments.map((p) => ({
+    const paymentEntries: PaymentEntry[] = payments.map((p) => ({
       type: 'payment',
       id: p.id,
       date: p.paymentDate,
@@ -162,16 +173,18 @@ export class DebtsService {
     }));
 
     // Xronologik (ASC) tartibda birlashtiramiz va running balance hisoblaymiz
-    const sorted: Entry[] = [...credits, ...debits].sort(
+    const sorted: Entry[] = [...saleEntries, ...paymentEntries].sort(
       (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
     // Eski (boshlang'ich) qarz — hammasidan oldingi birinchi yozuv
     const openingDebt = customer?.openingDebt ?? new D(0);
     let running = openingDebt;
-    const openingEntry: CreditEntry | null = openingDebt.gt(0)
+    const openingEntry: SaleEntry | null = openingDebt.gt(0)
       ? {
-          type: 'credit',
+          type: 'sale',
+          paymentType: PaymentType.NASIYA,
+          isOpening: true,
           id: 0,
           date: customer?.createdAt ?? new Date(),
           amount: openingDebt,
@@ -185,7 +198,12 @@ export class DebtsService {
       : null;
 
     for (const e of sorted) {
-      running = e.type === 'credit' ? running.plus(e.amount) : running.minus(e.amount);
+      if (e.type === 'payment') {
+        running = running.minus(e.amount);
+      } else if (e.paymentType === PaymentType.NASIYA) {
+        running = running.plus(e.amount);
+      }
+      // Naqd/karta sotuvlar qarz qoldig'ini o'zgartirmaydi
       e.runningBalance = running;
     }
 

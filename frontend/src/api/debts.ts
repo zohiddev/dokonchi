@@ -46,7 +46,11 @@ export interface DebtHistoryItem {
 }
 
 export interface DebtHistoryEntry {
-  type: 'credit' | 'payment';
+  type: 'sale' | 'payment';
+  /** Sotuv yozuvlari uchun to'lov turi */
+  paymentType?: 'NAQD' | 'KARTA' | 'NASIYA';
+  /** Boshlang'ich (appdan oldingi) eski qarz yozug'i — xarid statistikasiga kirmaydi */
+  isOpening?: boolean;
   id: number;
   date: string;
   amount: string;

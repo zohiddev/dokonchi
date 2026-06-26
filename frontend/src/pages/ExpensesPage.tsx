@@ -4,6 +4,7 @@ import { ExpenseModal } from '../components/ExpenseModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
+import { FilterBar, FilterSelect, SearchInput, type SelectOption } from '../components/ui/Filters';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
@@ -22,19 +23,42 @@ export function ExpensesPage() {
   const deleteExpense = useDeleteExpense();
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Jami summa va toifalar bo'yicha
+  // Filtrlar (client-side, oy ichida)
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (expenses.data ?? []).filter((e) => {
+      if (category !== 'all' && e.category !== category) return false;
+      if (q && !(e.category.toLowerCase().includes(q) || (e.notes ?? '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [expenses.data, search, category]);
+
+  const categoryOptions: SelectOption[] = useMemo(() => {
+    const set = new Set((expenses.data ?? []).map((e) => e.category));
+    return [
+      { value: 'all', label: 'Barcha toifa' },
+      ...[...set].sort().map((c) => ({ value: c, label: c })),
+    ];
+  }, [expenses.data]);
+
+  const hasFilter = !!(search || category !== 'all');
+  const clearAll = () => { setSearch(''); setCategory('all'); };
+
+  // Jami summa va toifalar bo'yicha (filtrlangan ko'rinish bo'yicha)
   const totals = useMemo(() => {
-    const list = expenses.data ?? [];
-    const total = list.reduce((sum, e) => sum + Number(e.amount), 0);
+    const total = filtered.reduce((sum, e) => sum + Number(e.amount), 0);
     const byCategory = new Map<string, number>();
-    for (const e of list) {
+    for (const e of filtered) {
       byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + Number(e.amount));
     }
     const topCategories = [...byCategory.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3);
-    return { total, count: list.length, topCategories };
-  }, [expenses.data]);
+    return { total, count: filtered.length, topCategories };
+  }, [filtered]);
 
   const handleDelete = async (e: Expense) => {
     if (!confirm(`"${e.category}" — ${money(e.amount)} xarajatini o'chirish?`)) return;
@@ -137,15 +161,21 @@ export function ExpensesPage() {
         </div>
       </div>
 
+      <FilterBar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Toifa yoki izoh..." />
+        <FilterSelect value={category} onChange={setCategory} ariaLabel="Toifa" options={categoryOptions} />
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
+
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={expenses.data}
+          data={filtered}
           rowKey={(e) => e.id}
           isLoading={expenses.isLoading}
           emptyTitle="Xarajat yo'q"
-          emptyDescription="Bu oyda xarajat qayd etilmagan"
-          resetKey={month}
+          emptyDescription={hasFilter ? 'Filtrga mos xarajat topilmadi' : 'Bu oyda xarajat qayd etilmagan'}
+          resetKey={`${month}|${search}|${category}`}
         />
       </Card>
 

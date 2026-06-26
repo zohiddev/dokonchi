@@ -19,6 +19,13 @@ export class QuerySalesDto {
   @IsDateString()
   to?: string;
 
+  @ApiPropertyOptional({ example: 1, description: 'Mijoz bo\'yicha filter' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  customerId?: number;
+
   @ApiPropertyOptional({ example: 50, default: 50 })
   @IsOptional()
   @Type(() => Number)

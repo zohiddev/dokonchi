@@ -48,6 +48,16 @@ export class CreateBatchDto {
   @Min(0)
   salePricePerUnit?: number;
 
+  @ApiPropertyOptional({
+    example: 1000000,
+    description: "Shu partiya uchun darhol to'langan summa (ta'minotchi tanlangan bo'lsa)",
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  amountPaid?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

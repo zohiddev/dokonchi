@@ -7,6 +7,8 @@ export interface Column<T> {
   key: string;
   header: ReactNode;
   render: (row: T) => ReactNode;
+  /** Jami qatori (tfoot) uchun — ko'rinib turgan qatorlardan hisoblanadi */
+  footer?: (rows: T[]) => ReactNode;
   width?: string;
   align?: 'left' | 'right' | 'center';
 }
@@ -73,6 +75,8 @@ export function DataTable<T>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
+  const hasFooter = columns.some((c) => c.footer);
+
   return (
     <div className={`table-wrap ${compact ? 'compact' : ''}`}>
       <table>
@@ -100,6 +104,17 @@ export function DataTable<T>({
             </tr>
           ))}
         </tbody>
+        {hasFooter && (
+          <tfoot>
+            <tr>
+              {columns.map((c) => (
+                <td key={c.key} style={{ textAlign: c.align ?? 'left' }}>
+                  {c.footer ? c.footer(rows) : null}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
       </table>
 
       {paginate && (
@@ -140,8 +155,17 @@ export function DataTable<T>({
         tbody tr:last-child td { border-bottom: none; }
         tbody tr.clickable { cursor: pointer; }
         tbody tr.clickable:hover { background: var(--paper-2); }
+        tfoot td {
+          padding: 13px 18px;
+          background: var(--paper-2);
+          border-top: 2px solid var(--line);
+          font-weight: 700;
+          color: var(--ink);
+          white-space: nowrap;
+        }
         .compact thead th { padding: 9px 14px; }
         .compact tbody td { padding: 10px 14px; }
+        .compact tfoot td { padding: 10px 14px; }
       `}</style>
     </div>
   );

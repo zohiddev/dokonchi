@@ -58,11 +58,14 @@ model Product {
 }
 
 model Supplier {
-  id      Int     @id @default(autoincrement())
-  name    String
-  phone   String?
-  notes   String?
-  batches Batch[]
+  id       Int               @id @default(autoincrement())
+  name     String
+  phone    String?
+  notes    String?
+  // Telegram bildirishnoma uchun chat id (ta'minotchi botga telefonini ulaganda saqlanadi)
+  telegramChatId String?
+  batches  Batch[]
+  payments SupplierPayment[]
 }
 
 model Batch {
@@ -79,6 +82,7 @@ model Batch {
   salePricePerUnit  Decimal?        @db.Decimal(14, 2)
   notes             String?
   allocations       SaleItemBatch[]
+  payments          SupplierPayment[]
   createdAt         DateTime        @default(now())
 
   @@index([productId, receivedDate])
@@ -91,6 +95,9 @@ model Customer {
   notes       String?
   // Appdan oldingi eski (boshlang'ich) qarz — onboarding paytida kiritiladi
   openingDebt Decimal       @default(0) @db.Decimal(14, 2)
+  // Telegram bildirishnoma uchun chat id (mijoz botga telefonini ulaganda saqlanadi).
+  // Bitta chat = bitta mijoz: ulashda eski bog'lanish ilova mantig'ida bekor qilinadi.
+  telegramChatId String?
   createdAt   DateTime      @default(now())
   sales       Sale[]
   payments    DebtPayment[]
@@ -141,6 +148,20 @@ model DebtPayment {
   amount      Decimal  @db.Decimal(14, 2)
   paymentDate DateTime @default(now())
   notes       String?
+}
+
+// Ta'minotchiga to'lov — partiya qo'shilganda (boshlang'ich) yoki keyin alohida
+model SupplierPayment {
+  id          Int      @id @default(autoincrement())
+  supplierId  Int
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  batchId     Int?
+  batch       Batch?   @relation(fields: [batchId], references: [id])
+  amount      Decimal  @db.Decimal(14, 2)
+  paymentDate DateTime @default(now())
+  notes       String?
+
+  @@index([supplierId])
 }
 
 model Expense {

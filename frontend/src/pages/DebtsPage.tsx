@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomers, useUpdateCustomer } from '../api/customers';
 import { useDebts, useDebtsSummary } from '../api/debts';
@@ -6,6 +6,7 @@ import { PayDebtModal } from '../components/PayDebtModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
+import { FilterBar, FilterSelect, SearchInput } from '../components/ui/Filters';
 import { Modal } from '../components/ui/Modal';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
@@ -18,6 +19,31 @@ export function DebtsPage() {
   const summary = useDebtsSummary();
   const [payCustomer, setPayCustomer] = useState<DebtCustomer | null>(null);
   const [oldDebtOpen, setOldDebtOpen] = useState(false);
+
+  // Filtr + saralash
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<'debt-desc' | 'debt-asc' | 'name' | 'recent'>('debt-desc');
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = (debts.data ?? []).filter(
+      (c) => !q || c.name.toLowerCase().includes(q) || (c.phone ?? '').toLowerCase().includes(q),
+    );
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      if (sort === 'debt-desc') return Number(b.balance) - Number(a.balance);
+      if (sort === 'debt-asc') return Number(a.balance) - Number(b.balance);
+      if (sort === 'name') return a.name.localeCompare(b.name);
+      // recent — so'nggi nasiya sanasi bo'yicha
+      const da = a.lastCreditDate ? new Date(a.lastCreditDate).getTime() : 0;
+      const db = b.lastCreditDate ? new Date(b.lastCreditDate).getTime() : 0;
+      return db - da;
+    });
+    return sorted;
+  }, [debts.data, search, sort]);
+
+  const hasFilter = !!search;
+  const clearAll = () => setSearch('');
 
   const columns: Column<DebtCustomer>[] = [
     {
@@ -96,11 +122,27 @@ export function DebtsPage() {
 
   return (
     <div className="debts-page">
-      <div className="debts-toolbar">
-        <Button variant="ghost" onClick={() => setOldDebtOpen(true)} icon={<IconPlus />}>
-          Eski qarz qo'shish
-        </Button>
-      </div>
+      <FilterBar
+        action={
+          <Button variant="ghost" onClick={() => setOldDebtOpen(true)} icon={<IconPlus />}>
+            Eski qarz qo'shish
+          </Button>
+        }
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Ism yoki telefon..." />
+        <FilterSelect
+          value={sort}
+          onChange={(v) => setSort(v as typeof sort)}
+          ariaLabel="Saralash"
+          options={[
+            { value: 'debt-desc', label: 'Qarz: ko\'p → kam' },
+            { value: 'debt-asc', label: 'Qarz: kam → ko\'p' },
+            { value: 'name', label: 'Ism (A→Z)' },
+            { value: 'recent', label: "So'nggi nasiya" },
+          ]}
+        />
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
 
       <div className="summary-row">
         <Card>
@@ -120,12 +162,13 @@ export function DebtsPage() {
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={debts.data}
+          data={visible}
           rowKey={(c) => c.id}
           isLoading={debts.isLoading}
           onRowClick={(c) => navigate(`/customers/${c.id}`)}
           emptyTitle="Qarzdor yo'q"
-          emptyDescription="Hozircha hech kim qarzdor emas"
+          emptyDescription={hasFilter ? 'Filtrga mos qarzdor topilmadi' : 'Hozircha hech kim qarzdor emas'}
+          resetKey={`${search}|${sort}`}
         />
       </Card>
 
@@ -142,7 +185,6 @@ export function DebtsPage() {
 
       <style>{`
         .debts-page { display: flex; flex-direction: column; gap: 16px; }
-        .debts-toolbar { display: flex; justify-content: flex-end; }
         .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .summary-row small {
           font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px;

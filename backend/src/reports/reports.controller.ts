@@ -48,7 +48,7 @@ export class ReportsController {
   @Get('overview')
   @ApiOperation({ summary: 'Pro KPI: daromad, foyda, margin %, sotuv soni, o\'rtacha chek + o\'sish %' })
   overview(@Query() query: AnalyticsQueryDto) {
-    return this.reports.overview(query.period ?? AnalyticsPeriod.MONTH);
+    return this.reports.overview(query.period ?? AnalyticsPeriod.MONTH, query.from, query.to);
   }
 
   @Get('top-products')
@@ -58,6 +58,8 @@ export class ReportsController {
       query.period ?? AnalyticsPeriod.MONTH,
       query.metric ?? TopProductMetric.PROFIT,
       query.limit ?? 10,
+      query.from,
+      query.to,
     );
   }
 
@@ -67,7 +69,15 @@ export class ReportsController {
     return this.reports.topCustomers(
       query.period ?? AnalyticsPeriod.MONTH,
       query.limit ?? 10,
+      query.from,
+      query.to,
     );
+  }
+
+  @Get('sales-by-channel')
+  @ApiOperation({ summary: "Savdo kanallari: asosiy do'kon (mijozsiz) vs mijozlar savdosi" })
+  salesByChannel(@Query() query: AnalyticsQueryDto) {
+    return this.reports.salesByChannel(query.period ?? AnalyticsPeriod.MONTH, query.from, query.to);
   }
 
   @Get('slow-movers')
@@ -85,6 +95,6 @@ export class ReportsController {
   @Get('sales-heatmap')
   @ApiOperation({ summary: 'Sotuv heatmap: hafta-kuni × soat matritsasi (qachon eng band)' })
   salesHeatmap(@Query() query: AnalyticsQueryDto) {
-    return this.reports.salesHeatmap(query.period ?? AnalyticsPeriod.MONTH);
+    return this.reports.salesHeatmap(query.period ?? AnalyticsPeriod.MONTH, query.from, query.to);
   }
 }

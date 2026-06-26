@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsPositive, Max } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsPositive, Matches, Max } from 'class-validator';
 
 export enum AnalyticsPeriod {
+  DAY = 'day',
   WEEK = 'week',
   MONTH = 'month',
   QUARTER = 'quarter',
@@ -20,6 +21,18 @@ export class AnalyticsQueryDto {
   @IsOptional()
   @IsEnum(AnalyticsPeriod)
   period?: AnalyticsPeriod;
+
+  @ApiPropertyOptional({
+    description: "Sana oralig'i boshi (YYYY-MM-DD). from+to berilsa period o'rniga ishlatiladi.",
+  })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'from YYYY-MM-DD formatida bo\'lishi kerak' })
+  from?: string;
+
+  @ApiPropertyOptional({ description: "Sana oralig'i oxiri (YYYY-MM-DD, shu kun ham kiradi)." })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'to YYYY-MM-DD formatida bo\'lishi kerak' })
+  to?: string;
 }
 
 export class TopProductsQueryDto extends AnalyticsQueryDto {
