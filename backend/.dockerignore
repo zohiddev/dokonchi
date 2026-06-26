@@ -1,0 +1,9 @@
+# Host node_modules'ni HECH QACHON nusxalamaymiz —
+# u macOS uchun qurilgan, linux containerda ishlamaydi (bcrypt, prisma engine)
+node_modules
+dist
+coverage
+.env
+.env.*
+*.log
+.git
