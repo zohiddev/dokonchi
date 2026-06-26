@@ -1,3 +1,6 @@
+# Nginx shabloni — konteyner ishga tushganda ${BACKEND_HOST} runtime env bilan to'ldiriladi.
+# Compose:   BACKEND_HOST=backend:3000 (Dockerfile default)
+# CapRover:  BACKEND_HOST=srv-captain--dokonchi-api:3000 (app env'da beriladi)
 server {
     listen 80;
     server_name _;
@@ -5,16 +8,15 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # gzip — sahifa tezroq yuklanadi
     gzip on;
     gzip_types text/plain text/css application/json application/javascript
                application/xml+rss image/svg+xml;
     gzip_min_length 1024;
 
-    # API so'rovlari -> backend konteyneriga.
+    # API so'rovlari -> backend ichki servisiga.
     # Oxiridagi "/" muhim: /api/auth/login -> backendda /auth/login bo'ladi.
     location /api/ {
-        proxy_pass http://backend:3000/;
+        proxy_pass http://${BACKEND_HOST}/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -23,7 +25,6 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # Statik fayllar uchun uzoq muddatli cache
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";

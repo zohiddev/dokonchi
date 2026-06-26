@@ -30,5 +30,6 @@ COPY --from=builder /app/package*.json ./
 
 EXPOSE 3000
 
-# Har ishga tushganda migratsiyalarni qo'llaymiz, keyin serverni ishga tushiramiz
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Har ishga tushganda: migratsiyalar -> admin seed (idempotent) -> server.
+# seed-prod admin mavjud bo'lsa o'tkazib yuboradi; xato bo'lsa ham ilova ishlayveradi.
+CMD ["sh", "-c", "npx prisma migrate deploy && (npx ts-node --transpile-only prisma/seed-prod.ts || true) && node dist/main"]

@@ -1,5 +1,8 @@
 # Dokonchi — Serverga deploy qilish (Contabo VPS, Ubuntu)
 
+> ℹ️ **Biz CapRover'dan foydalanyapmiz** — to'liq qo'llanma: [CAPROVER.md](./CAPROVER.md).
+> Bu fayl (Docker Compose) — CapRover'siz oddiy muqobil variant.
+
 Bitta serverda hammasi: **PostgreSQL + Backend (NestJS) + Frontend (Nginx)** — Docker Compose orqali.
 
 - **Server IP:** `185.182.184.190`
