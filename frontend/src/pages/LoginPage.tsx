@@ -32,7 +32,7 @@ export function LoginPage() {
     <div className="login-shell">
       <div className="login-card">
         <div className="brand">
-          <div className="mark">D</div>
+          <div className="mark"><img src="/logo-mark.png" alt="Do'konchi" /></div>
           <div>
             <h1>Do'konchi</h1>
             <span>Hisob-kitob</span>
@@ -99,15 +99,17 @@ export function LoginPage() {
           margin-bottom: 24px;
         }
         .login-card .brand .mark {
-          width: 44px; height: 44px;
+          width: 46px; height: 46px;
           border-radius: 12px;
-          background: linear-gradient(145deg, var(--accent-2), var(--accent));
-          color: var(--paper-2);
-          font-family: 'Fraunces', serif;
-          font-weight: 700;
-          font-size: 22px;
-          display: grid;
-          place-items: center;
+          background: #fff;
+          border: 1px solid var(--line);
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .login-card .brand .mark img {
+          width: 100%; height: 100%;
+          object-fit: contain;
+          display: block;
         }
         .login-card .brand h1 {
           font-family: 'Fraunces', serif;

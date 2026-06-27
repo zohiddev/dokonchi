@@ -11,13 +11,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: "Do'konchi — Hisob-kitob",
         short_name: "Do'konchi",
         description: "Do'kon hisob-kitob tizimi (FIFO, partiyalar, nasiya)",
-        theme_color: '#3a5a40',
-        background_color: '#f3ede0',
+        theme_color: '#2f5fd8',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
