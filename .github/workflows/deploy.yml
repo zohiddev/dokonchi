@@ -1,11 +1,12 @@
 name: Deploy to CapRover
 
 # Push qilinganda faqat o'zgargan app(lar) avtomatik deploy bo'ladi.
-# Branch'ni o'zgartirsangiz (masalan main) — quyidagi branches ro'yxatini yangilang.
+# Production = main. Faqat main'ga push (yoki merge) qilinganda deploy bo'ladi.
+# Kundalik ish boshqa branch'da -> tayyor bo'lganda main'ga merge -> prod yangilanadi.
 on:
   push:
     branches:
-      - feat/dokonchi-yaxshilanishlar
+      - main
 
 env:
   # CapRover server URL (domen olganda shu yerni yangilang)
