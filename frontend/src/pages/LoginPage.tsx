@@ -9,7 +9,7 @@ export function LoginPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
-  const [phone, setPhone] = useState('+998901234567');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +66,6 @@ export function LoginPage() {
           <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? 'Kirilmoqda...' : 'Kirish'}
           </button>
-          <div className="login-hint">
-            Sinov: <code>+998901234567</code> / <code>admin123</code>
-          </div>
         </form>
       </div>
 
@@ -167,19 +164,6 @@ export function LoginPage() {
           transform: translateY(-1px);
         }
         .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-        .login-hint {
-          font-size: 12px;
-          color: var(--ink-faint);
-          text-align: center;
-          margin-top: 4px;
-        }
-        .login-hint code {
-          font-family: 'IBM Plex Mono', monospace;
-          background: var(--paper);
-          padding: 1px 6px;
-          border-radius: 4px;
-          color: var(--ink-soft);
-        }
       `}</style>
     </div>
   );
