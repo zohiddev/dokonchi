@@ -95,19 +95,22 @@ ADMIN_PASSWORD=<dokonchiga kirish paroli>
 
 > `PG_PAROL` — 4-qadamdagi PostgreSQL paroli. `JWT_SECRET` uchun Mac'da `openssl rand -hex 32`.
 
-**Deploy (Mac terminalidan):**
+**Deploy (Mac terminalidan).** `caprover deploy` faqat git-root'dan ishlaydi, shuning
+uchun monorepo papkasini **tar** qilib `-t` bilan yuboramiz:
 ```bash
 cd /Users/zohidjon/Desktop/others/dokonchi/backend
-caprover deploy
-# machine: dokonchi, app: dokonchi-api
+COPYFILE_DISABLE=1 tar -cf /tmp/dokonchi-api.tar \
+  --exclude='./node_modules' --exclude='./node_modules/*' \
+  --exclude='./dist' --exclude='./dist/*' --exclude='./.git' .
+caprover deploy -n dokonchi -a dokonchi-api -t /tmp/dokonchi-api.tar
 ```
 
 Build tugagach backend avtomatik: migratsiya → admin yaratish → ishga tushadi.
 Backend'ga public domen SHART EMAS (ichki ishlaydi).
 
-## 7. Frontend (`dokonchi`)
+## 7. Frontend (`dokonchi-front`)
 
-**Panelda:** Apps → *Create New App* → nomi `dokonchi` → Create.
+**Panelda:** Apps → *Create New App* → nomi `dokonchi-front` → Create.
 
 **App Configs → Environmental Variables:**
 ```
@@ -115,14 +118,16 @@ BACKEND_HOST=srv-captain--dokonchi-api:3000
 ```
 *Save & Update*. (*HTTP Settings* da Container HTTP Port = `80`, default.)
 
-**Deploy (Mac'dan):**
+**Deploy (Mac'dan, tar usuli):**
 ```bash
 cd /Users/zohidjon/Desktop/others/dokonchi/frontend
-caprover deploy
-# app: dokonchi
+COPYFILE_DISABLE=1 tar -cf /tmp/dokonchi-web.tar \
+  --exclude='./node_modules' --exclude='./node_modules/*' \
+  --exclude='./dist' --exclude='./dist/*' --exclude='./.git' .
+caprover deploy -n dokonchi -a dokonchi-front -t /tmp/dokonchi-web.tar
 ```
 
-Deploy tugagach app avtomatik `http://dokonchi.185.182.184.190.nip.io` da ochiladi.
+Deploy tugagach app `http://dokonchi-front.185.182.184.190.nip.io` da ochiladi.
 
 ## 8. Tekshirish
 
@@ -162,6 +167,22 @@ Backuplar: `/opt/dokonchi-backups/` (14 kun).
   gunzip -c /opt/dokonchi-backups/dokonchi_YYYY-...sql.gz | \
     docker exec -i "$CID" sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
   ```
+
+## Avtomatik deploy (GitHub Actions)
+
+`.github/workflows/deploy.yml` — push qilinganda o'zgargan app avtomatik deploy bo'ladi.
+Yoqish uchun (bir martalik):
+
+1. **App Token'lar** — CapRover panelida har app uchun:
+   - `dokonchi-api` → *Deployment* tab → **Enable App Token** → tokenni nusxalang
+   - `dokonchi-front` → *Deployment* tab → **Enable App Token** → tokenni nusxalang
+2. **GitHub secrets** — repo → *Settings → Secrets and variables → Actions → New repository secret*:
+   - `CAPROVER_APP_TOKEN_API` = backend tokeni
+   - `CAPROVER_APP_TOKEN_FRONT` = frontend tokeni
+3. Tayyor. Endi `backend/` yoki `frontend/` o'zgartirib push qilsangiz — o'sha app avtomatik
+   qayta deploy bo'ladi (GitHub → tar → CapRover build).
+
+> Server URL workflow ichida `CAPROVER_HOST` env'da. Domen olganda shu qatorni yangilang.
 
 ## Domen + HTTPS (keyin)
 

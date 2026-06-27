@@ -1,0 +1,64 @@
+name: Deploy to CapRover
+
+# Push qilinganda faqat o'zgargan app(lar) avtomatik deploy bo'ladi.
+# Branch'ni o'zgartirsangiz (masalan main) — quyidagi branches ro'yxatini yangilang.
+on:
+  push:
+    branches:
+      - feat/dokonchi-yaxshilanishlar
+
+env:
+  # CapRover server URL (domen olganda shu yerni yangilang)
+  CAPROVER_HOST: http://captain.185.182.184.190.nip.io
+
+jobs:
+  # 1) Qaysi papka o'zgarganini aniqlaymiz
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  # 2) Backend o'zgargan bo'lsa deploy qilamiz
+  deploy-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g caprover
+      - name: Backend'ni tar qilib deploy qilish
+        run: |
+          tar -cf deploy.tar -C backend .
+          caprover deploy \
+            --caproverUrl "$CAPROVER_HOST" \
+            --appToken "${{ secrets.CAPROVER_APP_TOKEN_API }}" \
+            --appName dokonchi-api \
+            --tarFile ./deploy.tar
+
+  # 3) Frontend o'zgargan bo'lsa deploy qilamiz
+  deploy-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g caprover
+      - name: Frontend'ni tar qilib deploy qilish
+        run: |
+          tar -cf deploy.tar -C frontend .
+          caprover deploy \
+            --caproverUrl "$CAPROVER_HOST" \
+            --appToken "${{ secrets.CAPROVER_APP_TOKEN_FRONT }}" \
+            --appName dokonchi-front \
+            --tarFile ./deploy.tar
