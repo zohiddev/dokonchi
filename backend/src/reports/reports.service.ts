@@ -7,6 +7,8 @@ import { TimeseriesPeriod } from './dto/timeseries.dto';
 
 const D = Prisma.Decimal;
 
+type AnalyticsRangePeriod = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
 function startOfDay(d: Date): Date {
   const out = new Date(d);
   out.setHours(0, 0, 0, 0);
@@ -43,20 +45,32 @@ export class ReportsService {
     const weekStart = startOfWeek(now);
     const weekEnd = addDays(weekStart, 7);
 
-    const [todaySales, weekSales, debtsSummary, invValuation, productCount] = await Promise.all([
-      this.prisma.sale.aggregate({
-        where: { saleDate: { gte: dayStart, lt: dayEnd } },
-        _sum: { totalAmount: true, totalCost: true },
-        _count: true,
-      }),
-      this.prisma.sale.aggregate({
-        where: { saleDate: { gte: weekStart, lt: weekEnd } },
-        _sum: { totalAmount: true, totalCost: true },
-      }),
-      this.debts.summary(),
-      this.inventory.valuation(),
-      this.prisma.product.count({ where: { isActive: true } }),
-    ]);
+    const [todaySales, todayCredit, todayExpenses, weekSales, debtsSummary, invValuation, productCount] =
+      await Promise.all([
+        this.prisma.sale.aggregate({
+          where: { saleDate: { gte: dayStart, lt: dayEnd } },
+          _sum: { totalAmount: true, totalCost: true },
+          _count: true,
+        }),
+        this.prisma.sale.aggregate({
+          where: {
+            saleDate: { gte: dayStart, lt: dayEnd },
+            paymentType: PaymentType.NASIYA,
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.expense.aggregate({
+          where: { expenseDate: { gte: dayStart, lt: dayEnd } },
+          _sum: { amount: true },
+        }),
+        this.prisma.sale.aggregate({
+          where: { saleDate: { gte: weekStart, lt: weekEnd } },
+          _sum: { totalAmount: true, totalCost: true },
+        }),
+        this.debts.summary(),
+        this.inventory.valuation(),
+        this.prisma.product.count({ where: { isActive: true } }),
+      ]);
 
     const todayRevenue = todaySales._sum.totalAmount ?? new D(0);
     const todayCost = todaySales._sum.totalCost ?? new D(0);
@@ -68,6 +82,8 @@ export class ReportsService {
         revenue: todayRevenue,
         profit: todayRevenue.minus(todayCost),
         salesCount: todaySales._count,
+        newCredit: todayCredit._sum.totalAmount ?? new D(0),
+        expenses: todayExpenses._sum.amount ?? new D(0),
       },
       thisWeek: {
         revenue: weekRevenue,
@@ -238,11 +254,13 @@ export class ReportsService {
   // ============= CHUQURLASHTIRILGAN ANALITIKA =============
 
   // Davr → sana oralig'iga aylantirish
-  private periodRange(period: 'week' | 'month' | 'quarter' | 'year'): { from: Date; to: Date } {
+  private periodRange(period: AnalyticsRangePeriod): { from: Date; to: Date } {
     const now = new Date();
     const to = now;
     let from: Date;
-    if (period === 'week') {
+    if (period === 'day') {
+      from = startOfDay(now);
+    } else if (period === 'week') {
       from = new Date(now);
       from.setDate(from.getDate() - 7);
     } else if (period === 'month') {
@@ -258,9 +276,39 @@ export class ReportsService {
     return { from, to };
   }
 
+  // YYYY-MM-DD → kun boshi/oxiri (lokal vaqt)
+  private parseDay(s: string, endOfDay = false): Date {
+    const [y, m, d] = s.split('-').map(Number);
+    const out = new Date(y, m - 1, d);
+    if (endOfDay) out.setHours(23, 59, 59, 999);
+    else out.setHours(0, 0, 0, 0);
+    return out;
+  }
+
+  // from+to berilsa maxsus oraliq, aks holda period asosida
+  private resolveRange(
+    period: AnalyticsRangePeriod,
+    from?: string,
+    to?: string,
+  ): { from: Date; to: Date } {
+    if (from && to) {
+      // Foydalanuvchi teskari tanlasa ham to'g'rilaymiz: erta sana → boshi, kech sana → oxiri
+      const [lo, hi] =
+        this.parseDay(from).getTime() <= this.parseDay(to).getTime()
+          ? [from, to]
+          : [to, from];
+      return { from: this.parseDay(lo), to: this.parseDay(hi, true) };
+    }
+    return this.periodRange(period);
+  }
+
   // 1) Umumiy KPI'lar (Pro ko'rsatkichlar)
-  async overview(period: 'week' | 'month' | 'quarter' | 'year' = 'month') {
-    const { from, to } = this.periodRange(period);
+  async overview(
+    period: AnalyticsRangePeriod = 'month',
+    rangeFrom?: string,
+    rangeTo?: string,
+  ) {
+    const { from, to } = this.resolveRange(period, rangeFrom, rangeTo);
 
     const [agg, prevAgg] = await Promise.all([
       this.prisma.sale.aggregate({
@@ -294,7 +342,7 @@ export class ReportsService {
       : null;
 
     return {
-      period,
+      period: rangeFrom && rangeTo ? 'custom' : period,
       from,
       to,
       revenue,
@@ -313,11 +361,13 @@ export class ReportsService {
 
   // 2) Top mahsulotlar — qaysi mahsulot eng yaxshi sotilyapti
   async topProducts(
-    period: 'week' | 'month' | 'quarter' | 'year' = 'month',
+    period: AnalyticsRangePeriod = 'month',
     metric: 'quantity' | 'revenue' | 'profit' = 'profit',
     limit = 10,
+    rangeFrom?: string,
+    rangeTo?: string,
   ) {
-    const { from, to } = this.periodRange(period);
+    const { from, to } = this.resolveRange(period, rangeFrom, rangeTo);
 
     const items = await this.prisma.saleItem.findMany({
       where: { sale: { saleDate: { gte: from, lte: to } } },
@@ -392,10 +442,12 @@ export class ReportsService {
 
   // 3) Top mijozlar
   async topCustomers(
-    period: 'week' | 'month' | 'quarter' | 'year' = 'month',
+    period: AnalyticsRangePeriod = 'month',
     limit = 10,
+    rangeFrom?: string,
+    rangeTo?: string,
   ) {
-    const { from, to } = this.periodRange(period);
+    const { from, to } = this.resolveRange(period, rangeFrom, rangeTo);
 
     const sales = await this.prisma.sale.findMany({
       where: {
@@ -450,6 +502,80 @@ export class ReportsService {
       .map((a) => ({ ...a, profit: a.revenue.minus(a.cost) }))
       .sort((x, y) => Number(y.revenue.minus(x.revenue)))
       .slice(0, limit);
+  }
+
+  // Savdo kanallari: asosiy do'kon (mijozsiz sotuv) vs mijozlar savdosi (mijoz biriktirilgan)
+  async salesByChannel(
+    period: AnalyticsRangePeriod = 'month',
+    rangeFrom?: string,
+    rangeTo?: string,
+  ) {
+    const { from, to } = this.resolveRange(period, rangeFrom, rangeTo);
+
+    const [mainShop, customers, mainCredit, custCredit, expensesAgg] =
+      await Promise.all([
+        this.prisma.sale.aggregate({
+          where: { saleDate: { gte: from, lte: to }, customerId: null },
+          _sum: { totalAmount: true, totalCost: true },
+          _count: true,
+        }),
+        this.prisma.sale.aggregate({
+          where: { saleDate: { gte: from, lte: to }, customerId: { not: null } },
+          _sum: { totalAmount: true, totalCost: true },
+          _count: true,
+        }),
+        this.prisma.sale.aggregate({
+          where: {
+            saleDate: { gte: from, lte: to },
+            customerId: null,
+            paymentType: PaymentType.NASIYA,
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.sale.aggregate({
+          where: {
+            saleDate: { gte: from, lte: to },
+            customerId: { not: null },
+            paymentType: PaymentType.NASIYA,
+          },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.expense.aggregate({
+          where: { expenseDate: { gte: from, lte: to } },
+          _sum: { amount: true },
+        }),
+      ]);
+
+    const build = (
+      agg: {
+        _sum: { totalAmount: Prisma.Decimal | null; totalCost: Prisma.Decimal | null };
+        _count: number;
+      },
+      creditAgg: { _sum: { totalAmount: Prisma.Decimal | null } },
+    ) => {
+      const revenue = agg._sum.totalAmount ?? new D(0);
+      const cost = agg._sum.totalCost ?? new D(0);
+      const profit = revenue.minus(cost);
+      const margin = revenue.gt(0) ? profit.div(revenue) : new D(0);
+      const newCredit = creditAgg._sum.totalAmount ?? new D(0);
+      return { revenue, cost, profit, margin, salesCount: agg._count, newCredit };
+    };
+
+    const main = build(mainShop, mainCredit);
+    const cust = build(customers, custCredit);
+    // Xarajat kanalga bog'lanmaydi — umumiy hisoblanadi
+    const expenses = expensesAgg._sum.amount ?? new D(0);
+    const grossProfit = main.profit.plus(cust.profit);
+    const netProfit = grossProfit.minus(expenses);
+
+    return {
+      period: rangeFrom && rangeTo ? 'custom' : period,
+      mainShop: main,
+      customers: cust,
+      expenses,
+      grossProfit,
+      netProfit,
+    };
   }
 
   // 4) Sekin sotilganlar — so'nggi N kun ichida sotilmagan, lekin omborda bor
@@ -598,8 +724,12 @@ export class ReportsService {
   }
 
   // 6) Sotuv heatmap — soat × hafta-kuni matritsasi
-  async salesHeatmap(period: 'week' | 'month' | 'quarter' | 'year' = 'month') {
-    const { from, to } = this.periodRange(period);
+  async salesHeatmap(
+    period: AnalyticsRangePeriod = 'month',
+    rangeFrom?: string,
+    rangeTo?: string,
+  ) {
+    const { from, to } = this.resolveRange(period, rangeFrom, rangeTo);
 
     const sales = await this.prisma.sale.findMany({
       where: { saleDate: { gte: from, lte: to } },
@@ -635,7 +765,7 @@ export class ReportsService {
     }
 
     return {
-      period,
+      period: rangeFrom && rangeTo ? 'custom' : period,
       from,
       to,
       matrix,

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
+import { CreateSupplierPaymentDto } from './dto/create-supplier-payment.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { SuppliersService } from './suppliers.service';
 
@@ -27,6 +28,24 @@ export class SuppliersController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.suppliers.findOne(id);
+  }
+
+  @Get(':id/balance')
+  @ApiOperation({ summary: "Ta'minotchi qarzi va oldi-berdi ko'rsatkichlari" })
+  balance(@Param('id', ParseIntPipe) id: number) {
+    return this.suppliers.balance(id);
+  }
+
+  @Get(':id/history')
+  @ApiOperation({ summary: "Ta'minotchi oldi-berdi tarixi (partiya + to'lov)" })
+  history(@Param('id', ParseIntPipe) id: number) {
+    return this.suppliers.history(id);
+  }
+
+  @Post('payments')
+  @ApiOperation({ summary: "Ta'minotchiga to'lov qabul qilish" })
+  createPayment(@Body() dto: CreateSupplierPaymentDto) {
+    return this.suppliers.createPayment(dto);
   }
 
   @Post()

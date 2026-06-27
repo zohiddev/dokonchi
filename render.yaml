@@ -22,3 +22,10 @@ services:
         value: 7d
       - key: NODE_VERSION
         value: "22"
+      # Telegram bot tokeni (@BotFather) — Render dashboard'da qo'lda kiritiladi.
+      # Bo'sh bo'lsa bot o'chiq bo'ladi (ilova normal ishlaydi).
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      # Bot xabarlarida ko'rinadigan do'kon nomi
+      - key: SHOP_NAME
+        value: "Dokonchi"

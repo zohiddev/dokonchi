@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { isoWeekLabel } from '../common/utils/iso-week';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { BatchStatusFilter, QueryBatchesDto } from './dto/query-batches.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
@@ -11,7 +12,10 @@ const ATTENTION_REMAINING_RATIO = 0.15;
 
 @Injectable()
 export class BatchesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegram: TelegramService,
+  ) {}
 
   findAll(query: QueryBatchesDto) {
     const where: Prisma.BatchWhereInput = {};
@@ -98,23 +102,46 @@ export class BatchesService {
       throw new BadRequestException('Sana noto\'g\'ri');
     }
 
-    return this.prisma.batch.create({
-      data: {
-        productId: dto.productId,
-        supplierId: dto.supplierId ?? null,
-        receivedDate,
-        weekLabel: isoWeekLabel(receivedDate),
-        quantityReceived: dto.quantityReceived,
-        quantityRemaining: dto.quantityReceived,
-        costPricePerUnit: dto.costPricePerUnit,
-        salePricePerUnit: dto.salePricePerUnit ?? null,
-        notes: dto.notes ?? null,
-      },
-      include: {
-        product: { include: { category: true } },
-        supplier: true,
-      },
+    const batch = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.batch.create({
+        data: {
+          productId: dto.productId,
+          supplierId: dto.supplierId ?? null,
+          receivedDate,
+          weekLabel: isoWeekLabel(receivedDate),
+          quantityReceived: dto.quantityReceived,
+          quantityRemaining: dto.quantityReceived,
+          costPricePerUnit: dto.costPricePerUnit,
+          salePricePerUnit: dto.salePricePerUnit ?? null,
+          notes: dto.notes ?? null,
+        },
+        include: {
+          product: { include: { category: true } },
+          supplier: true,
+        },
+      });
+
+      // Partiya uchun darhol to'langan summa — ta'minotchiga boshlang'ich to'lov sifatida yoziladi
+      if (created.supplierId && dto.amountPaid && dto.amountPaid > 0) {
+        await tx.supplierPayment.create({
+          data: {
+            supplierId: created.supplierId,
+            batchId: created.id,
+            amount: dto.amountPaid,
+            notes: "Partiya uchun boshlang'ich to'lov",
+          },
+        });
+      }
+
+      return created;
     });
+
+    // Ta'minotchiga Telegram bildirishnoma (fire-and-forget)
+    if (batch.supplierId) {
+      void this.telegram.notifySupplierBatch(batch.id);
+    }
+
+    return batch;
   }
 
   async update(id: number, dto: UpdateBatchDto) {

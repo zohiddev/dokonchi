@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { useCustomers, useCreateCustomer, useDeleteCustomer, useUpdateCustomer } from '../api/customers';
@@ -6,6 +6,7 @@ import { useDebts } from '../api/debts';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
+import { FilterBar, FilterSelect, SearchInput } from '../components/ui/Filters';
 import { Modal } from '../components/ui/Modal';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
@@ -33,8 +34,27 @@ export function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  // Filtrlar
+  const [search, setSearch] = useState('');
+  const [debtStatus, setDebtStatus] = useState<'all' | 'debtor' | 'clean'>('all');
+
   // Qarzdor mijozlar id'lari → har bir mijoz qatorida tegni ko'rsatish uchun
   const debtMap = new Map((debts.data ?? []).map((d) => [d.id, d.balance]));
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (customers.data ?? []).filter((c) => {
+      const isDebtor = Number(debtMap.get(c.id) ?? 0) > 0;
+      if (debtStatus === 'debtor' && !isDebtor) return false;
+      if (debtStatus === 'clean' && isDebtor) return false;
+      if (q && !(c.name.toLowerCase().includes(q) || (c.phone ?? '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customers.data, debts.data, search, debtStatus]);
+
+  const hasFilter = !!(search || debtStatus !== 'all');
+  const clearAll = () => { setSearch(''); setDebtStatus('all'); };
 
   const openCreate = () => {
     setEditingCustomer(null);
@@ -120,24 +140,38 @@ export function CustomersPage() {
 
   return (
     <div>
-      <div className="page-toolbar">
-        <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
-          {customers.data ? `${customers.data.length} ta mijoz` : '...'}
-        </div>
-        <Button onClick={openCreate} icon={<IconPlus />}>
-          Yangi mijoz
-        </Button>
-      </div>
+      <FilterBar
+        action={
+          <Button onClick={openCreate} icon={<IconPlus />}>
+            Yangi mijoz
+          </Button>
+        }
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Ism yoki telefon..." />
+        <FilterSelect
+          value={debtStatus}
+          onChange={(v) => setDebtStatus(v as 'all' | 'debtor' | 'clean')}
+          ariaLabel="Qarz holati"
+          options={[
+            { value: 'all', label: 'Barchasi' },
+            { value: 'debtor', label: 'Qarzdor' },
+            { value: 'clean', label: 'Qarzsiz' },
+          ]}
+        />
+        <span style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>{filtered.length} ta mijoz</span>
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
 
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={customers.data}
+          data={filtered}
           rowKey={(c) => c.id}
           isLoading={customers.isLoading}
           onRowClick={(c) => navigate(`/customers/${c.id}`)}
           emptyTitle="Mijoz yo'q"
-          emptyDescription="Birinchi mijozni qo'shing"
+          emptyDescription={hasFilter ? 'Filtrga mos mijoz topilmadi' : "Birinchi mijozni qo'shing"}
+          resetKey={`${search}|${debtStatus}`}
         />
       </Card>
 
@@ -166,13 +200,6 @@ export function CustomersPage() {
           }
         }}
       />
-
-      <style>{`
-        .page-toolbar {
-          display: flex; align-items: center; justify-content: space-between;
-          gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
-        }
-      `}</style>
     </div>
   );
 }

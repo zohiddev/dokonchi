@@ -6,6 +6,7 @@ export interface SalesFilter {
   paymentType?: PaymentType;
   from?: string;
   to?: string;
+  customerId?: number;
   limit?: number;
   page?: number;
 }
@@ -55,6 +56,7 @@ export function useCreateSale() {
       qc.invalidateQueries({ queryKey: ['batches'] });
       qc.invalidateQueries({ queryKey: ['inventory'] });
       qc.invalidateQueries({ queryKey: ['debts'] });
+      qc.invalidateQueries({ queryKey: ['customers'] }); // mijoz balansi/foyda stat. yangilanishi uchun
       qc.invalidateQueries({ queryKey: ['reports'] });
       qc.invalidateQueries({ queryKey: ['cash'] }); // NAQD/KARTA sotuv → kassa kirimi
     },

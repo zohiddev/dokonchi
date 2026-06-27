@@ -16,6 +16,7 @@ import { ProductsModule } from './products/products.module';
 import { ReportsModule } from './reports/reports.module';
 import { SalesModule } from './sales/sales.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { TelegramModule } from './telegram/telegram.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     ExpensesModule,
     ReportsModule,
     CashModule,
+    TelegramModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

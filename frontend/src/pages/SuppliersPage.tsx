@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router-dom';
 import {
   useCreateSupplier,
   useDeleteSupplier,
@@ -9,10 +10,12 @@ import {
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
+import { FilterBar, FilterSelect, SearchInput } from '../components/ui/Filters';
 import { Modal } from '../components/ui/Modal';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
 import { extractError } from '../lib/axios';
+import { money } from '../lib/format';
 import type { Supplier } from '../types/api';
 
 interface SupplierFormValues {
@@ -23,6 +26,7 @@ interface SupplierFormValues {
 
 export function SuppliersPage() {
   const toast = useToast();
+  const navigate = useNavigate();
   const suppliers = useSuppliers();
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
@@ -30,6 +34,32 @@ export function SuppliersPage() {
 
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Filtr + saralash
+  const [search, setSearch] = useState('');
+  const [debtStatus, setDebtStatus] = useState<'all' | 'debtor' | 'clean'>('all');
+  const [sort, setSort] = useState<'name' | 'debt-desc'>('name');
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = (suppliers.data ?? []).filter((s) => {
+      const debt = Number(s.balance ?? 0);
+      if (debtStatus === 'debtor' && debt <= 0) return false;
+      if (debtStatus === 'clean' && debt > 0) return false;
+      if (q && !(s.name.toLowerCase().includes(q) || (s.phone ?? '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+    const sorted = [...list];
+    sorted.sort((a, b) =>
+      sort === 'debt-desc'
+        ? Number(b.balance ?? 0) - Number(a.balance ?? 0)
+        : a.name.localeCompare(b.name),
+    );
+    return sorted;
+  }, [suppliers.data, search, debtStatus, sort]);
+
+  const hasFilter = !!(search || debtStatus !== 'all');
+  const clearAll = () => { setSearch(''); setDebtStatus('all'); };
 
   const openCreate = () => {
     setEditing(null);
@@ -93,10 +123,24 @@ export function SuppliersPage() {
       align: 'center',
     },
     {
+      key: 'balance',
+      header: 'Qarz',
+      render: (s) => {
+        const bal = Number(s.balance ?? 0);
+        if (bal > 0) return <Tag tone="brick">{money(bal, false)}</Tag>;
+        return <Tag tone="green">Qarzsiz</Tag>;
+      },
+      align: 'right',
+      width: '150px',
+    },
+    {
       key: 'actions',
       header: '',
       render: (s) => (
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+        <div
+          style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant="ghost" size="sm" onClick={() => openEdit(s)}>
             Tahrir
           </Button>
@@ -112,23 +156,47 @@ export function SuppliersPage() {
 
   return (
     <div>
-      <div className="page-toolbar">
-        <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
-          {suppliers.data ? `${suppliers.data.length} ta ta'minotchi` : '...'}
-        </div>
-        <Button onClick={openCreate} icon={<IconPlus />}>
-          Yangi ta'minotchi
-        </Button>
-      </div>
+      <FilterBar
+        action={
+          <Button onClick={openCreate} icon={<IconPlus />}>
+            Yangi ta'minotchi
+          </Button>
+        }
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Nom yoki telefon..." />
+        <FilterSelect
+          value={debtStatus}
+          onChange={(v) => setDebtStatus(v as 'all' | 'debtor' | 'clean')}
+          ariaLabel="Qarz holati"
+          options={[
+            { value: 'all', label: 'Barchasi' },
+            { value: 'debtor', label: 'Qarzli' },
+            { value: 'clean', label: 'Qarzsiz' },
+          ]}
+        />
+        <FilterSelect
+          value={sort}
+          onChange={(v) => setSort(v as 'name' | 'debt-desc')}
+          ariaLabel="Saralash"
+          options={[
+            { value: 'name', label: 'Ism (A→Z)' },
+            { value: 'debt-desc', label: 'Qarz: ko\'p → kam' },
+          ]}
+        />
+        <span style={{ color: 'var(--ink-soft)', fontSize: 12.5 }}>{visible.length} ta</span>
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
 
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={suppliers.data}
+          data={visible}
           rowKey={(s) => s.id}
           isLoading={suppliers.isLoading}
+          onRowClick={(s) => navigate(`/suppliers/${s.id}`)}
           emptyTitle="Ta'minotchi yo'q"
-          emptyDescription="Birinchi ta'minotchini qo'shing — partiya qo'shganda kerak bo'ladi"
+          emptyDescription={hasFilter ? 'Filtrga mos ta\'minotchi topilmadi' : "Birinchi ta'minotchini qo'shing — partiya qo'shganda kerak bo'ladi"}
+          resetKey={`${search}|${debtStatus}|${sort}`}
         />
       </Card>
 
@@ -151,13 +219,6 @@ export function SuppliersPage() {
           }
         }}
       />
-
-      <style>{`
-        .page-toolbar {
-          display: flex; align-items: center; justify-content: space-between;
-          gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
-        }
-      `}</style>
     </div>
   );
 }

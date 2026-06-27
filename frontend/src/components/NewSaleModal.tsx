@@ -395,29 +395,38 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
             ))}
           </div>
 
-          {paymentType === 'NASIYA' && (
-            <div className="cust-block">
-              {!newCustOpen ? (
-                <>
-                  <label className="lbl">Mijoz</label>
-                  <div className="cust-row">
-                    <select
-                      value={customerId}
-                      onChange={(e) => setCustomerId(e.target.value ? Number(e.target.value) : '')}
-                    >
-                      <option value="">— tanlang —</option>
-                      {(customers.data ?? []).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}{c.phone ? ` · ${c.phone}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <button className="add-cust" onClick={() => setNewCustOpen(true)} title="Yangi mijoz">
-                      + Yangi
-                    </button>
-                  </div>
-                </>
-              ) : (
+          <div className="cust-block">
+            {!newCustOpen ? (
+              <>
+                <label className="lbl">
+                  Mijoz{' '}
+                  {paymentType === 'NASIYA'
+                    ? <span className="req">— majburiy</span>
+                    : <span className="opt">(ixtiyoriy)</span>}
+                </label>
+                <div className="cust-row">
+                  <select
+                    value={customerId}
+                    onChange={(e) => setCustomerId(e.target.value ? Number(e.target.value) : '')}
+                  >
+                    <option value="">— tanlang —</option>
+                    {(customers.data ?? []).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{c.phone ? ` · ${c.phone}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="add-cust" onClick={() => setNewCustOpen(true)} title="Yangi mijoz">
+                    + Yangi
+                  </button>
+                </div>
+                {paymentType !== 'NASIYA' && (
+                  <small className="cust-hint">
+                    Mijozni biriktirsangiz — bu xarid uning foyda hisob-kitobiga yoziladi
+                  </small>
+                )}
+              </>
+            ) : (
                 <form onSubmit={submitNewCustomer} className="newcust">
                   <div className="newcust-head">
                     <strong>Yangi mijoz</strong>
@@ -443,7 +452,6 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
                 </form>
               )}
             </div>
-          )}
 
           <input
             className="notes-input"
@@ -729,6 +737,9 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           font-size: 11px; color: var(--ink-soft); text-transform: uppercase;
           letter-spacing: .4px; font-weight: 600;
         }
+        .cust-block .lbl .req { color: var(--brick); text-transform: none; letter-spacing: 0; }
+        .cust-block .lbl .opt { color: var(--ink-faint); text-transform: none; letter-spacing: 0; font-weight: 500; }
+        .cust-hint { font-size: 11.5px; color: var(--ink-faint); }
         .cust-row { display: flex; gap: 6px; }
         .cust-row select {
           flex: 1; padding: 8px 10px;

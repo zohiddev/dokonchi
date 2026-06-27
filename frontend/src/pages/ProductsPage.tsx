@@ -4,7 +4,7 @@ import { useCategories, useCreateProduct, useDeleteProduct, useProducts, useUpda
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { FilterTabs } from '../components/ui/FilterTabs';
+import { FilterBar, FilterSelect, SearchInput, type SelectOption } from '../components/ui/Filters';
 import { Modal } from '../components/ui/Modal';
 import { Tag } from '../components/ui/Tag';
 import { useToast } from '../components/ui/Toast';
@@ -33,10 +33,15 @@ interface ProductFormValues {
 export function ProductsPage() {
   const toast = useToast();
   const categories = useCategories();
-  const [activeCat, setActiveCat] = useState<number | 'all'>('all');
-  const products = useProducts(activeCat === 'all' ? {} : { categoryId: activeCat });
+  const products = useProducts({});
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
+
+  // Filtrlar (client-side)
+  const [search, setSearch] = useState('');
+  const [categoryId, setCategoryId] = useState('all');
+  const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [unit, setUnit] = useState<'all' | Unit>('all');
 
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
@@ -52,12 +57,24 @@ export function ProductsPage() {
     setModalOpen(true);
   };
 
-  const categoryOptions = useMemo(() => {
-    const all = [{ value: 'all' as const, label: 'Barchasi', count: products.data?.length }];
-    return categories.data
-      ? [...all, ...categories.data.map((c) => ({ value: c.id, label: c.name, count: c._count?.products }))]
-      : all;
-  }, [categories.data, products.data?.length]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (products.data ?? []).filter((p) => {
+      if (categoryId !== 'all' && p.categoryId !== Number(categoryId)) return false;
+      if (status === 'active' && !p.isActive) return false;
+      if (status === 'inactive' && p.isActive) return false;
+      if (unit !== 'all' && p.baseUnit !== unit) return false;
+      if (q && !(p.name.toLowerCase().includes(q) || (p.barcode ?? '').toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [products.data, search, categoryId, status, unit]);
+
+  const categoryOptions: SelectOption[] = [
+    { value: 'all', label: 'Barcha toifa' },
+    ...(categories.data ?? []).map((c) => ({ value: String(c.id), label: c.name })),
+  ];
+  const hasFilter = !!(search || categoryId !== 'all' || status !== 'all' || unit !== 'all');
+  const clearAll = () => { setSearch(''); setCategoryId('all'); setStatus('all'); setUnit('all'); };
 
   const handleDelete = async (p: Product) => {
     if (!confirm(`"${p.name}" mahsulotini o'chirish?`)) return;
@@ -133,26 +150,43 @@ export function ProductsPage() {
 
   return (
     <div>
-      <div className="page-toolbar">
-        <FilterTabs<number | 'all'>
-          value={activeCat}
-          onChange={setActiveCat}
-          options={categoryOptions}
+      <FilterBar
+        action={
+          <Button onClick={openCreate} icon={<IconPlus />}>
+            Yangi mahsulot
+          </Button>
+        }
+      >
+        <SearchInput value={search} onChange={setSearch} placeholder="Nom yoki shtrix-kod..." />
+        <FilterSelect value={categoryId} onChange={setCategoryId} ariaLabel="Toifa" options={categoryOptions} />
+        <FilterSelect
+          value={status}
+          onChange={(v) => setStatus(v as 'all' | 'active' | 'inactive')}
+          ariaLabel="Holat"
+          options={[
+            { value: 'all', label: 'Barcha holat' },
+            { value: 'active', label: 'Faol' },
+            { value: 'inactive', label: 'Faolsiz' },
+          ]}
         />
-        <Button onClick={openCreate} icon={<IconPlus />}>
-          Yangi mahsulot
-        </Button>
-      </div>
+        <FilterSelect
+          value={unit}
+          onChange={(v) => setUnit(v as 'all' | Unit)}
+          ariaLabel="Birlik"
+          options={[{ value: 'all', label: 'Barcha birlik' }, ...UNITS.map((u) => ({ value: u.value, label: u.label }))]}
+        />
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
 
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={products.data}
+          data={filtered}
           rowKey={(p) => p.id}
           isLoading={products.isLoading}
           emptyTitle="Mahsulot yo'q"
-          emptyDescription="Bu toifada hozircha mahsulot yo'q"
-          resetKey={activeCat}
+          emptyDescription={hasFilter ? 'Filtrga mos mahsulot topilmadi' : "Birinchi mahsulotni qo'shing"}
+          resetKey={`${search}|${categoryId}|${status}|${unit}`}
         />
       </Card>
 
@@ -184,14 +218,6 @@ export function ProductsPage() {
           }
         }}
       />
-
-      <style>{`
-        .page-toolbar {
-          display: flex; align-items: center;
-          justify-content: space-between;
-          gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
-        }
-      `}</style>
     </div>
   );
 }

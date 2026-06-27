@@ -42,11 +42,31 @@ export function useMonthlySummary(month?: string) {
 
 // ===== ANALITIKA =====
 
-export type AnalyticsPeriod = 'week' | 'month' | 'quarter' | 'year';
+export type AnalyticsPeriod = 'day' | 'week' | 'month' | 'quarter' | 'year';
 export type TopProductMetric = 'quantity' | 'revenue' | 'profit';
 
-export interface OverviewData {
+/** Davr filtri: period yoki maxsus sana oralig'i (from+to, YYYY-MM-DD) */
+export interface PeriodParams {
   period: AnalyticsPeriod;
+  from?: string;
+  to?: string;
+}
+
+function periodQuery(p: PeriodParams): Record<string, string> {
+  const params: Record<string, string> = { period: p.period };
+  if (p.from && p.to) {
+    params.from = p.from;
+    params.to = p.to;
+  }
+  return params;
+}
+
+function periodKey(p: PeriodParams): string {
+  return p.from && p.to ? `${p.from}_${p.to}` : p.period;
+}
+
+export interface OverviewData {
+  period: AnalyticsPeriod | 'custom';
   from: string;
   to: string;
   revenue: string;
@@ -83,6 +103,24 @@ export interface TopCustomerRow {
   creditAmount: string;
 }
 
+export interface ChannelStat {
+  revenue: string;
+  cost: string;
+  profit: string;
+  margin: string;
+  salesCount: number;
+  newCredit: string;
+}
+
+export interface SalesByChannel {
+  period: AnalyticsPeriod | 'custom';
+  mainShop: ChannelStat;
+  customers: ChannelStat;
+  expenses: string;
+  grossProfit: string;
+  netProfit: string;
+}
+
 export interface SlowMoverRow {
   productId: number;
   name: string;
@@ -111,41 +149,49 @@ export interface HeatmapCell {
 }
 
 export interface SalesHeatmapData {
-  period: AnalyticsPeriod;
+  period: AnalyticsPeriod | 'custom';
   from: string;
   to: string;
   matrix: HeatmapCell[];
 }
 
-export function useOverview(period: AnalyticsPeriod = 'month') {
+export function useOverview(p: PeriodParams) {
   return useQuery({
-    queryKey: ['reports', 'overview', period],
+    queryKey: ['reports', 'overview', periodKey(p)],
     queryFn: async () =>
-      (await api.get<OverviewData>('/reports/overview', { params: { period } })).data,
+      (await api.get<OverviewData>('/reports/overview', { params: periodQuery(p) })).data,
   });
 }
 
 export function useTopProducts(
-  period: AnalyticsPeriod = 'month',
+  p: PeriodParams,
   metric: TopProductMetric = 'profit',
   limit = 10,
 ) {
   return useQuery({
-    queryKey: ['reports', 'top-products', period, metric, limit],
+    queryKey: ['reports', 'top-products', periodKey(p), metric, limit],
     queryFn: async () =>
       (await api.get<TopProductRow[]>('/reports/top-products', {
-        params: { period, metric, limit },
+        params: { ...periodQuery(p), metric, limit },
       })).data,
   });
 }
 
-export function useTopCustomers(period: AnalyticsPeriod = 'month', limit = 10) {
+export function useTopCustomers(p: PeriodParams, limit = 10) {
   return useQuery({
-    queryKey: ['reports', 'top-customers', period, limit],
+    queryKey: ['reports', 'top-customers', periodKey(p), limit],
     queryFn: async () =>
       (await api.get<TopCustomerRow[]>('/reports/top-customers', {
-        params: { period, limit },
+        params: { ...periodQuery(p), limit },
       })).data,
+  });
+}
+
+export function useSalesByChannel(p: PeriodParams) {
+  return useQuery({
+    queryKey: ['reports', 'sales-by-channel', periodKey(p)],
+    queryFn: async () =>
+      (await api.get<SalesByChannel>('/reports/sales-by-channel', { params: periodQuery(p) })).data,
   });
 }
 
@@ -165,10 +211,10 @@ export function useCashflowTrend(days = 30) {
   });
 }
 
-export function useSalesHeatmap(period: AnalyticsPeriod = 'month') {
+export function useSalesHeatmap(p: PeriodParams) {
   return useQuery({
-    queryKey: ['reports', 'sales-heatmap', period],
+    queryKey: ['reports', 'sales-heatmap', periodKey(p)],
     queryFn: async () =>
-      (await api.get<SalesHeatmapData>('/reports/sales-heatmap', { params: { period } })).data,
+      (await api.get<SalesHeatmapData>('/reports/sales-heatmap', { params: periodQuery(p) })).data,
   });
 }

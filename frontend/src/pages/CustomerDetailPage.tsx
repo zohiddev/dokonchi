@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCustomer, useCustomerBalance } from '../api/customers';
 import { useCustomerHistory, type DebtHistoryEntry } from '../api/debts';
+import { BotInviteButton } from '../components/BotInviteButton';
 import { PayDebtModal } from '../components/PayDebtModal';
+import { QuickCustomerSaleModal } from '../components/QuickCustomerSaleModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Spinner } from '../components/ui/Spinner';
-import { Tag } from '../components/ui/Tag';
+import { Tag, type TagTone } from '../components/ui/Tag';
 import { dateTime, money, qty } from '../lib/format';
 
 export function CustomerDetailPage() {
@@ -20,6 +22,7 @@ export function CustomerDetailPage() {
   const history = useCustomerHistory(customerId);
 
   const [payOpen, setPayOpen] = useState(false);
+  const [saleOpen, setSaleOpen] = useState(false);
 
   if (customer.isLoading) {
     return <div style={{ padding: 32, textAlign: 'center' }}><Spinner /></div>;
@@ -39,16 +42,28 @@ export function CustomerDetailPage() {
   const b = balance.data;
   const hasDebt = b ? Number(b.balance) > 0 : false;
 
-  // Statistika
+  // Statistika — barcha xaridlar (naqd/karta/nasiya); eski qarz yozug'i hisobga olinmaydi
   const allEntries = history.data ?? [];
-  const credits = allEntries.filter((e) => e.type === 'credit');
+  const saleEntries = allEntries.filter((e) => e.type === 'sale' && !e.isOpening);
   const payments = allEntries.filter((e) => e.type === 'payment');
+  const purchaseRevenue = saleEntries.reduce((s, e) => s + Number(e.amount), 0);
+  const purchaseProfit = saleEntries.reduce((s, e) => s + Number(e.profit ?? 0), 0);
 
   return (
     <div className="cd-page">
-      <Link to="/customers" className="back-link">
-        ← Mijozlar
-      </Link>
+      <div className="cd-top">
+        <Link to="/customers" className="back-link">
+          ← Mijozlar
+        </Link>
+        <div className="cd-actions">
+          <Button onClick={() => setSaleOpen(true)} icon={<IconSell />}>
+            Mijozga sotish
+          </Button>
+          <Button variant="ghost" onClick={() => setPayOpen(true)} icon={<IconReceive />}>
+            Qarz to'lash
+          </Button>
+        </div>
+      </div>
 
       {/* Sarlavha + asosiy ko'rsatkichlar */}
       <Card>
@@ -63,29 +78,59 @@ export function CustomerDetailPage() {
               <Tag tone={hasDebt ? 'brick' : 'green'}>
                 {hasDebt ? `Qarz: ${money(b?.balance ?? 0, false)}` : 'Toza'}
               </Tag>
+              <Tag tone={c.telegramChatId ? 'green' : 'gray'}>
+                {c.telegramChatId ? '📨 Telegram ulangan' : '📨 Telegram ulanmagan'}
+              </Tag>
+              {!c.telegramChatId && (
+                <>
+                  <small className="tg-hint">Bildirishnoma uchun mijoz botga raqamini ulashi kerak</small>
+                  <BotInviteButton name={c.name} />
+                </>
+              )}
             </div>
           </div>
 
-          {b && (
+          {/* Xarid va foyda — barcha oldi-sotdi (to'lov turidan qat'i nazar) */}
+          <div className="stat-block">
+            <div className="stat-label">Xarid va foyda</div>
             <div className="kpi-strip">
               <div className="kpi">
-                <small>JAMI NASIYA</small>
-                <strong className="num">{money(b.totalCredit)}</strong>
-                <span>{credits.length} ta sotuv</span>
+                <small>JAMI XARID</small>
+                <strong className="num">{money(purchaseRevenue)}</strong>
+                <span>{saleEntries.length} ta xarid</span>
               </div>
               <div className="kpi">
-                <small>TO'LANGAN</small>
-                <strong className="num up">{money(b.totalPaid)}</strong>
-                <span>{payments.length} ta to'lov</span>
+                <small>JAMI FOYDA</small>
+                <strong className="num up">{money(purchaseProfit)}</strong>
+                <span>bizga keltirgan foyda</span>
               </div>
-              <div className="kpi big">
-                <small>JORIY QARZ</small>
-                <strong className={`num ${hasDebt ? 'dn' : 'up'}`}>{money(b.balance)}</strong>
-                {hasDebt && (
-                  <Button size="sm" onClick={() => setPayOpen(true)}>
-                    To'lov qabul qilish
-                  </Button>
-                )}
+              <div className="kpi">
+                <small>O'RTACHA CHEK</small>
+                <strong className="num">
+                  {money(saleEntries.length ? purchaseRevenue / saleEntries.length : 0)}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Qarz holati — faqat nasiya/to'lov; xariddan alohida */}
+          {b && (
+            <div className="stat-block">
+              <div className="stat-label">Qarz holati</div>
+              <div className="kpi-strip">
+                <div className="kpi">
+                  <small>JAMI NASIYA</small>
+                  <strong className="num">{money(b.totalCredit)}</strong>
+                </div>
+                <div className="kpi">
+                  <small>TO'LANGAN</small>
+                  <strong className="num up">{money(b.totalPaid)}</strong>
+                  <span>{payments.length} ta to'lov</span>
+                </div>
+                <div className="kpi big">
+                  <small>JORIY QARZ</small>
+                  <strong className={`num ${hasDebt ? 'dn' : 'up'}`}>{money(b.balance)}</strong>
+                </div>
               </div>
             </div>
           )}
@@ -101,40 +146,59 @@ export function CustomerDetailPage() {
             <CardBody>
               <EmptyState
                 title="Tarix bo'sh"
-                description="Bu mijoz hali nasiyaga olmagan"
+                description="Bu mijoz hali hech narsa sotib olmagan"
               />
             </CardBody>
           </Card>
         )}
         {history.data && history.data.length > 0 && (
           <ul className="timeline">
-            {history.data.map((entry, idx) => (
-              <li key={`${entry.type}-${entry.id}`} className={`tl-entry ${entry.type}`}>
-                <div className="tl-dot" />
-                {idx < history.data!.length - 1 && <div className="tl-line" />}
-                <div className="tl-card">
-                  <HistoryEntry entry={entry} />
-                </div>
-              </li>
-            ))}
+            {history.data.map((entry, idx) => {
+              const cls =
+                entry.type === 'payment'
+                  ? 'payment'
+                  : entry.paymentType === 'NASIYA'
+                    ? 'credit'
+                    : 'paid';
+              return (
+                <li key={`${entry.type}-${entry.id}`} className={`tl-entry ${cls}`}>
+                  <div className="tl-dot" />
+                  {idx < history.data!.length - 1 && <div className="tl-line" />}
+                  <div className="tl-card">
+                    <HistoryEntry entry={entry} />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
 
       <PayDebtModal
         customer={
-          payOpen && b
-            ? { id: c.id, name: c.name, balance: b.balance }
+          payOpen
+            ? { id: c.id, name: c.name, balance: b?.balance }
             : null
         }
         onClose={() => setPayOpen(false)}
       />
 
+      <QuickCustomerSaleModal
+        open={saleOpen}
+        onClose={() => setSaleOpen(false)}
+        lockedCustomer={{ id: c.id, name: c.name, phone: c.phone }}
+      />
+
       <style>{`
         .cd-page { display: flex; flex-direction: column; gap: 16px; }
+        .cd-top {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; flex-wrap: wrap;
+        }
+        .cd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .back-link {
           color: var(--ink-soft); font-size: 13px;
-          font-weight: 500; align-self: flex-start;
+          font-weight: 500;
           padding: 4px 0;
         }
         .back-link:hover { color: var(--accent); }
@@ -157,14 +221,22 @@ export function CustomerDetailPage() {
           color: var(--ink-soft); font-size: 13px;
           margin-top: 6px; max-width: 460px;
         }
+        .head-status { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+        .head-status .tg-hint { font-size: 11px; color: var(--ink-faint); max-width: 210px; text-align: right; }
 
+        .stat-block {
+          margin-top: 18px;
+          padding-top: 16px;
+          border-top: 1px solid var(--line);
+        }
+        .stat-label {
+          font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+          color: var(--ink-faint); font-weight: 700; margin-bottom: 12px;
+        }
         .kpi-strip {
           display: grid;
           grid-template-columns: 1fr 1fr 1.4fr;
           gap: 14px;
-          margin-top: 18px;
-          padding-top: 16px;
-          border-top: 1px solid var(--line);
         }
         .kpi {
           display: flex; flex-direction: column; gap: 4px;
@@ -204,6 +276,7 @@ export function CustomerDetailPage() {
         }
         .tl-entry.credit .tl-dot { background: var(--brick); }
         .tl-entry.payment .tl-dot { background: var(--green); }
+        .tl-entry.paid .tl-dot { background: var(--accent); }
         .tl-line {
           position: absolute; left: 13px; top: 28px;
           width: 2px; height: calc(100% + 12px);
@@ -221,17 +294,47 @@ export function CustomerDetailPage() {
   );
 }
 
+function IconSell() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h2l2.4 12.2a1 1 0 0 0 1 .8h8.7a1 1 0 0 0 1-.8L21 8H6" />
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="18" cy="21" r="1" />
+    </svg>
+  );
+}
+
+function IconReceive() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M4 18h16" />
+    </svg>
+  );
+}
+
 function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
-  if (entry.type === 'credit') {
+  if (entry.type === 'sale') {
+    // Faqat nasiya (va eski qarz) qarz qoldig'iga ta'sir qiladi
+    const affectsDebt = !!entry.isOpening || entry.paymentType === 'NASIYA';
+    const tag: { tone: TagTone; label: string } = entry.isOpening
+      ? { tone: 'brick', label: '📝 Eski qarz' }
+      : entry.paymentType === 'NASIYA'
+        ? { tone: 'brick', label: '📝 Nasiya sotuvi' }
+        : entry.paymentType === 'KARTA'
+          ? { tone: 'amber', label: '💳 Karta xarid' }
+          : { tone: 'green', label: '💵 Naqd xarid' };
+
     return (
       <div>
         <div className="he-head">
           <div>
-            <Tag tone="brick">📝 Nasiya sotuvi</Tag>
+            <Tag tone={tag.tone}>{tag.label}</Tag>
             <span className="he-date num">{dateTime(entry.date)}</span>
           </div>
-          <strong className="num he-amt" style={{ color: 'var(--brick)' }}>
-            + {money(entry.amount)}
+          <strong className="num he-amt" style={{ color: affectsDebt ? 'var(--brick)' : 'var(--ink)' }}>
+            {affectsDebt ? '+ ' : ''}{money(entry.amount)}
           </strong>
         </div>
 
@@ -250,15 +353,19 @@ function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
         )}
 
         <div className="he-footer">
-          {entry.totalCost && entry.profit && (
+          {!entry.isOpening && entry.totalCost !== undefined && entry.profit !== undefined && (
             <small>
               Tannarx: <span className="num">{money(entry.totalCost, false)}</span> ·
               Foyda: <span className="num" style={{ color: 'var(--green)' }}>{money(entry.profit, false)}</span>
             </small>
           )}
-          <small className="balance">
-            Balans: <strong className="num">{money(entry.runningBalance, false)}</strong>
-          </small>
+          {affectsDebt ? (
+            <small className="balance">
+              Qarz: <strong className="num">{money(entry.runningBalance, false)}</strong>
+            </small>
+          ) : (
+            <small className="paid-pill">To'langan ✓</small>
+          )}
         </div>
 
         {entry.notes && <p className="he-notes">{entry.notes}</p>}
@@ -299,6 +406,7 @@ function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
           }
           .he-footer small { font-size: 11.5px; color: var(--ink-soft); }
           .he-footer .balance strong { color: var(--brick); font-weight: 700; }
+          .he-footer .paid-pill { color: var(--green); font-weight: 600; }
 
           .he-notes {
             margin-top: 8px;

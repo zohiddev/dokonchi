@@ -5,7 +5,7 @@ interface Option<T extends string | number> {
 }
 
 interface FilterTabsProps<T extends string | number> {
-  value: T;
+  value?: T;
   options: Option<T>[];
   onChange: (next: T) => void;
 }

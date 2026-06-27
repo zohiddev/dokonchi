@@ -14,6 +14,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProductsPage } from './pages/ProductsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SalesPage } from './pages/SalesPage';
+import { SupplierDetailPage } from './pages/SupplierDetailPage';
 import { SuppliersPage } from './pages/SuppliersPage';
 import { UsersPage } from './pages/UsersPage';
 
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="expenses" element={<ExpensesPage />} />
           <Route path="batches" element={<BatchesPage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="suppliers/:id" element={<SupplierDetailPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="customers" element={<CustomersPage />} />
