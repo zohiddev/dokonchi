@@ -9,7 +9,7 @@ export function LoginPage() {
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
 
-  const [phone, setPhone] = useState('+998901234567');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function LoginPage() {
     <div className="login-shell">
       <div className="login-card">
         <div className="brand">
-          <div className="mark">D</div>
+          <div className="mark"><img src="/logo-mark.png" alt="Do'konchi" /></div>
           <div>
             <h1>Do'konchi</h1>
             <span>Hisob-kitob</span>
@@ -66,9 +66,6 @@ export function LoginPage() {
           <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? 'Kirilmoqda...' : 'Kirish'}
           </button>
-          <div className="login-hint">
-            Sinov: <code>+998901234567</code> / <code>admin123</code>
-          </div>
         </form>
       </div>
 
@@ -99,15 +96,17 @@ export function LoginPage() {
           margin-bottom: 24px;
         }
         .login-card .brand .mark {
-          width: 44px; height: 44px;
+          width: 46px; height: 46px;
           border-radius: 12px;
-          background: linear-gradient(145deg, var(--accent-2), var(--accent));
-          color: var(--paper-2);
-          font-family: 'Fraunces', serif;
-          font-weight: 700;
-          font-size: 22px;
-          display: grid;
-          place-items: center;
+          background: #fff;
+          border: 1px solid var(--line);
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .login-card .brand .mark img {
+          width: 100%; height: 100%;
+          object-fit: contain;
+          display: block;
         }
         .login-card .brand h1 {
           font-family: 'Fraunces', serif;
@@ -165,19 +164,6 @@ export function LoginPage() {
           transform: translateY(-1px);
         }
         .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
-        .login-hint {
-          font-size: 12px;
-          color: var(--ink-faint);
-          text-align: center;
-          margin-top: 4px;
-        }
-        .login-hint code {
-          font-family: 'IBM Plex Mono', monospace;
-          background: var(--paper);
-          padding: 1px 6px;
-          border-radius: 4px;
-          color: var(--ink-soft);
-        }
       `}</style>
     </div>
   );

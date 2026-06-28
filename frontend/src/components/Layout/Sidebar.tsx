@@ -35,7 +35,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="mark">D</div>
+        <div className="mark"><img src="/logo-mark.png" alt="Do'konchi" /></div>
         <div>
           <h1>Do'konchi</h1>
           <span>Hisob-kitob</span>
@@ -86,11 +86,10 @@ export function Sidebar() {
         .sidebar .brand { display: flex; align-items: center; gap: 11px; padding: 6px 10px 22px; }
         .sidebar .brand .mark {
           width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
-          background: linear-gradient(145deg, var(--accent-2), var(--accent));
-          display: grid; place-items: center;
-          font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; color: #fff;
+          background: #fff; overflow: hidden;
           box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
         }
+        .sidebar .brand .mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
         .sidebar .brand h1 { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; letter-spacing: .2px; line-height: 1.1; }
         .sidebar .brand span { font-size: 11px; color: #9c9482; letter-spacing: .4px; text-transform: uppercase; }
         .nav-group { margin-top: 6px; flex: 1; }
