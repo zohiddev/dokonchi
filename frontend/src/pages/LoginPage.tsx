@@ -3,6 +3,29 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { extractError } from '../lib/axios';
 
+// Faqat raqamlarni ajratib, +998 dan keyingi 9 raqamni qaytaradi.
+function uzDigits(input: string): string {
+  let digits = input.replace(/\D/g, '');
+  if (digits.startsWith('998')) digits = digits.slice(3);
+  return digits.slice(0, 9);
+}
+
+// Ko'rinish uchun mask: +998 90 123 45 67
+function formatUzPhone(input: string): string {
+  const d = uzDigits(input);
+  if (d.length === 0) return '';
+  let out = '+998 ' + d.slice(0, 2);
+  if (d.length > 2) out += ' ' + d.slice(2, 5);
+  if (d.length > 5) out += ' ' + d.slice(5, 7);
+  if (d.length > 7) out += ' ' + d.slice(7, 9);
+  return out;
+}
+
+// Backendga yuborish uchun: +998901234567
+function normalizeUzPhone(input: string): string {
+  return '+998' + uzDigits(input);
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +42,7 @@ export function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      await login(phone, password);
+      await login(normalizeUzPhone(phone), password);
       navigate(from === '/login' ? '/' : from, { replace: true });
     } catch (err) {
       setError(extractError(err));
@@ -43,9 +66,11 @@ export function LoginPage() {
             <span>Telefon</span>
             <input
               type="tel"
+              inputMode="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+998 9X XXX XX XX"
+              onChange={(e) => setPhone(formatUzPhone(e.target.value))}
+              placeholder="+998 90 123 45 67"
+              maxLength={17}
               autoComplete="username"
               required
             />
