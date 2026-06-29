@@ -8,7 +8,11 @@ RUN npm ci
 
 # Manba kod + Prisma client generatsiya + Nest build
 COPY . .
-RUN npx prisma generate && npm run build
+# DATABASE_URL faqat build-vaqtidagi `prisma generate` uchun kerak (prisma.config.ts env() talab qiladi).
+# `generate` bazaga ULANMAYDI — placeholder yetarli. Haqiqiy ulanish runtime'da keladi
+# (CapRover env -> CMD'dagi `prisma migrate deploy`).
+RUN DATABASE_URL="postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public" \
+    npx prisma generate && npm run build
 
 # ===== Runtime bosqichi =====
 FROM node:22-slim
