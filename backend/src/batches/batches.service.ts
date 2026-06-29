@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { isoWeekLabel } from '../common/utils/iso-week';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { resolveBatchQuantities } from './batch-quantity';
 import { CreateBatchDto } from './dto/create-batch.dto';
 import { BatchStatusFilter, QueryBatchesDto } from './dto/query-batches.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
@@ -81,13 +82,23 @@ export class BatchesService {
       }));
   }
 
+  // Yagona mahsulotli partiya. Endi har bir batch yetkazmaga (Delivery) tegishli bo'lishi uchun
+  // bitta-qatorli yetkazma yaratib, batchni unga bog'laymiz. (Ko'p mahsulotli kirim — DeliveriesService.)
   async create(dto: CreateBatchDto) {
     const product = await this.prisma.product.findUnique({
       where: { id: dto.productId },
-      select: { id: true, isActive: true },
+      select: { id: true, name: true, isActive: true, packSize: true },
     });
     if (!product) throw new BadRequestException('Mahsulot topilmadi');
     if (!product.isActive) throw new BadRequestException('Mahsulot faol emas');
+
+    // Pachka rejimida miqdor va dona tannarxni packSize orqali hisoblaymiz.
+    // Aks holda base-unit qiymatlar to'g'ridan-to'g'ri ishlatiladi.
+    const { quantityReceived, costPricePerUnit, costPerPack } = resolveBatchQuantities(
+      dto,
+      product.packSize,
+      product.name,
+    );
 
     if (dto.supplierId !== undefined) {
       const supplier = await this.prisma.supplier.findUnique({
@@ -101,18 +112,31 @@ export class BatchesService {
     if (Number.isNaN(receivedDate.getTime())) {
       throw new BadRequestException('Sana noto\'g\'ri');
     }
+    const weekLabel = isoWeekLabel(receivedDate);
 
-    const batch = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.batch.create({
+    const { delivery, batch } = await this.prisma.$transaction(async (tx) => {
+      const delivery = await tx.delivery.create({
+        data: {
+          supplierId: dto.supplierId ?? null,
+          receivedDate,
+          weekLabel,
+          notes: dto.notes ?? null,
+        },
+      });
+
+      const batch = await tx.batch.create({
         data: {
           productId: dto.productId,
           supplierId: dto.supplierId ?? null,
+          deliveryId: delivery.id,
           receivedDate,
-          weekLabel: isoWeekLabel(receivedDate),
-          quantityReceived: dto.quantityReceived,
-          quantityRemaining: dto.quantityReceived,
-          costPricePerUnit: dto.costPricePerUnit,
+          weekLabel,
+          quantityReceived,
+          quantityRemaining: quantityReceived,
+          costPricePerUnit,
+          costPerPack: costPerPack ?? null,
           salePricePerUnit: dto.salePricePerUnit ?? null,
+          packSalePrice: dto.packSalePrice ?? null,
           notes: dto.notes ?? null,
         },
         include: {
@@ -121,24 +145,24 @@ export class BatchesService {
         },
       });
 
-      // Partiya uchun darhol to'langan summa — ta'minotchiga boshlang'ich to'lov sifatida yoziladi
-      if (created.supplierId && dto.amountPaid && dto.amountPaid > 0) {
+      // Yetkazma uchun darhol to'langan summa — ta'minotchiga boshlang'ich to'lov sifatida yoziladi
+      if (delivery.supplierId && dto.amountPaid && dto.amountPaid > 0) {
         await tx.supplierPayment.create({
           data: {
-            supplierId: created.supplierId,
-            batchId: created.id,
+            supplierId: delivery.supplierId,
+            deliveryId: delivery.id,
             amount: dto.amountPaid,
-            notes: "Partiya uchun boshlang'ich to'lov",
+            notes: "Yetkazma uchun boshlang'ich to'lov",
           },
         });
       }
 
-      return created;
+      return { delivery, batch };
     });
 
     // Ta'minotchiga Telegram bildirishnoma (fire-and-forget)
-    if (batch.supplierId) {
-      void this.telegram.notifySupplierBatch(batch.id);
+    if (delivery.supplierId) {
+      void this.telegram.notifySupplierDelivery(delivery.id);
     }
 
     return batch;
@@ -149,6 +173,7 @@ export class BatchesService {
     const data: Prisma.BatchUpdateInput = {};
     if (dto.costPricePerUnit !== undefined) data.costPricePerUnit = dto.costPricePerUnit;
     if (dto.salePricePerUnit !== undefined) data.salePricePerUnit = dto.salePricePerUnit;
+    if (dto.packSalePrice !== undefined) data.packSalePrice = dto.packSalePrice;
     if (dto.notes !== undefined) data.notes = dto.notes;
 
     return this.prisma.batch.update({

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/axios';
-import type { Paginated, PaymentType, Sale, SalePreviewResult } from '../types/api';
+import type { Paginated, PaymentType, Sale, SaleMode, SalePreviewResult } from '../types/api';
 
 export interface SalesFilter {
   paymentType?: PaymentType;
@@ -28,8 +28,11 @@ export function useSale(id: number | null) {
 
 export interface CreateSaleItemInput {
   productId: number;
-  quantity: number;
-  unitPrice: number;
+  quantity: number; // HAR DOIM baseUnit da (PACK: packCount × packSize)
+  unitPrice: number; // dona narxi (baseUnit uchun)
+  saleMode?: SaleMode;
+  packCount?: number; // PACK bo'lsa: nechta pachka
+  packPrice?: number; // PACK bo'lsa: bitta butun pachka narxi (aniq summa uchun)
 }
 
 export interface CreateSalePayload {

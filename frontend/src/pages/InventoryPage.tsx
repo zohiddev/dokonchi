@@ -1,12 +1,78 @@
+import { useMemo, useState } from 'react';
 import { useInventory, useInventoryValuation } from '../api/inventory';
+import { useSuppliers, useSupplierProducts } from '../api/suppliers';
+import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { DataTable, type Column } from '../components/ui/DataTable';
+import { FilterBar, SearchableSelect, type SelectOption } from '../components/ui/Filters';
 import { money, qty } from '../lib/format';
 import type { InventoryRow } from '../types/api';
+
+/** O'rtacha tannarx bo'yicha 1 pachkadan taxminiy foyda (narxlar partiyaga qarab o'zgaradi) */
+function PackProfitCell({ row: r }: { row: InventoryRow }) {
+  const ps = r.packSize ? Number(r.packSize) : 0;
+  const pu = r.packUnit;
+  const cost = r.avgCost != null ? Number(r.avgCost) : null;
+  if (!ps || !pu || cost == null) return <small style={{ color: 'var(--ink-faint)' }}>—</small>;
+
+  const pieceSale = r.currentSalePrice != null ? Number(r.currentSalePrice) : null;
+  const packSale = r.currentPackSalePrice != null ? Number(r.currentPackSalePrice) : null;
+  const pieceProfit = pieceSale != null ? (pieceSale - cost) * ps : null;
+  const wholeProfit = packSale != null ? packSale - cost * ps : null;
+  if (pieceProfit == null && wholeProfit == null) return <small style={{ color: 'var(--ink-faint)' }}>—</small>;
+
+  const tone = (v: number) => (v >= 0 ? 'var(--green)' : 'var(--brick)');
+  return (
+    <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+      <small style={{ color: 'var(--ink-faint)' }}>1 {pu} (taxm.):</small>
+      {pieceProfit != null && (
+        <div>dona: <b className="num" style={{ color: tone(pieceProfit) }}>{money(pieceProfit, false)}</b></div>
+      )}
+      {wholeProfit != null && (
+        <div>butun: <b className="num" style={{ color: tone(wholeProfit) }}>{money(wholeProfit, false)}</b></div>
+      )}
+    </div>
+  );
+}
 
 export function InventoryPage() {
   const inventory = useInventory();
   const valuation = useInventoryValuation();
+  const suppliers = useSuppliers();
+
+  // Filtrlar (searchable select)
+  const [productId, setProductId] = useState('all');
+  const [supplierId, setSupplierId] = useState('all');
+
+  // Ta'minotchi tanlansa — uning yetkazgan mahsulotlari bo'yicha filterlaymiz
+  const supplierProducts = useSupplierProducts(supplierId !== 'all' ? Number(supplierId) : null);
+  const supplierProductIds = useMemo(
+    () => (supplierId !== 'all' ? new Set((supplierProducts.data ?? []).map((p) => p.id)) : null),
+    [supplierId, supplierProducts.data],
+  );
+
+  const filtered = useMemo(() => {
+    return (inventory.data ?? []).filter((r) => {
+      if (productId !== 'all' && r.productId !== Number(productId)) return false;
+      if (supplierProductIds && !supplierProductIds.has(r.productId)) return false;
+      return true;
+    });
+  }, [inventory.data, productId, supplierProductIds]);
+
+  // Mahsulot select — ombordagi mahsulotlardan
+  const productOptions: SelectOption[] = [
+    { value: 'all', label: 'Barcha mahsulot' },
+    ...(inventory.data ?? []).map((r) => ({ value: String(r.productId), label: r.name })),
+  ];
+  const supplierOptions: SelectOption[] = [
+    { value: 'all', label: "Barcha ta'minotchi" },
+    ...(suppliers.data ?? []).map((s) => ({ value: String(s.id), label: s.name })),
+  ];
+
+  const hasFilter = productId !== 'all' || supplierId !== 'all';
+  const clearAll = () => { setProductId('all'); setSupplierId('all'); };
+  // Ta'minotchi tanlandi-yu lekin mahsulotlari hali yuklanmoqda
+  const supplierLoading = supplierId !== 'all' && supplierProducts.isLoading;
 
   const columns: Column<InventoryRow>[] = [
     {
@@ -74,6 +140,13 @@ export function InventoryPage() {
       align: 'right',
       width: '150px',
     },
+    {
+      key: 'packProfit',
+      header: 'Pachka foydasi',
+      render: (r) => <PackProfitCell row={r} />,
+      align: 'right',
+      width: '170px',
+    },
   ];
 
   return (
@@ -107,13 +180,33 @@ export function InventoryPage() {
         </Card>
       </div>
 
+      <FilterBar>
+        <SearchableSelect
+          value={productId}
+          onChange={setProductId}
+          ariaLabel="Mahsulot"
+          options={productOptions}
+          placeholder="Mahsulot qidirish..."
+        />
+        <SearchableSelect
+          value={supplierId}
+          onChange={setSupplierId}
+          ariaLabel="Ta'minotchi"
+          options={supplierOptions}
+          placeholder="Ta'minotchi qidirish..."
+        />
+        {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
+      </FilterBar>
+
       <Card padding={false}>
         <DataTable
           columns={columns}
-          data={inventory.data}
+          data={supplierLoading ? undefined : filtered}
           rowKey={(r) => r.productId}
-          isLoading={inventory.isLoading}
+          isLoading={inventory.isLoading || supplierLoading}
           emptyTitle="Ombor bo'sh"
+          emptyDescription={hasFilter ? 'Filtrga mos mahsulot topilmadi' : undefined}
+          resetKey={`${productId}|${supplierId}`}
         />
       </Card>
 

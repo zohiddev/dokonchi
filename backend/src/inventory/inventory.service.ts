@@ -42,6 +42,9 @@ export class InventoryService {
       const latest = activeBatches[activeBatches.length - 1];
       const currentSalePrice =
         latest?.salePricePerUnit ?? p.defaultSalePrice ?? null;
+      // Joriy butun-pachka narxi — so'nggi partiya override yoki product.packSalePrice
+      const currentPackSalePrice =
+        latest?.packSalePrice ?? p.packSalePrice ?? null;
 
       return {
         productId: p.id,
@@ -49,10 +52,12 @@ export class InventoryService {
         category: p.category,
         baseUnit: p.baseUnit,
         packSize: p.packSize,
+        packUnit: p.packUnit,
         activeBatchCount: activeBatches.length,
         totalRemaining,
         avgCost,
         currentSalePrice,
+        currentPackSalePrice,
       };
     });
   }

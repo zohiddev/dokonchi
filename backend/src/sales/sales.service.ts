@@ -3,14 +3,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PaymentType, Prisma } from '@prisma/client';
+import { PaymentType, Prisma, SaleMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
-import { CreateSaleDto } from './dto/create-sale.dto';
+import { CreateSaleDto, CreateSaleItemDto } from './dto/create-sale.dto';
 import { QuerySalesDto } from './dto/query-sales.dto';
 import { FifoAllocation, FifoService } from './fifo.service';
 
 const D = Prisma.Decimal;
+
+interface ResolvedLine {
+  quantity: Prisma.Decimal;
+  unitPrice: Prisma.Decimal;
+  lineTotal: Prisma.Decimal;
+  saleMode: SaleMode;
+  packCount: Prisma.Decimal | null;
+}
 
 export interface SalePreviewItem {
   productId: number;
@@ -20,6 +28,8 @@ export interface SalePreviewItem {
   lineTotal: Prisma.Decimal;
   lineCost: Prisma.Decimal;
   lineProfit: Prisma.Decimal;
+  saleMode: SaleMode;
+  packCount: Prisma.Decimal | null;
   allocations: { batchId: number; quantity: Prisma.Decimal; costPrice: Prisma.Decimal }[];
 }
 
@@ -112,18 +122,20 @@ export class SalesService {
         throw new BadRequestException(`"${product.name}" — faol emas`);
       }
 
+      const line = this.resolveLine(item);
       const allocation = await this.fifo.preview(item.productId, item.quantity);
-      const lineTotal = new D(item.quantity).times(item.unitPrice);
-      const lineProfit = lineTotal.minus(allocation.totalCost);
+      const lineProfit = line.lineTotal.minus(allocation.totalCost);
 
       items.push({
         productId: product.id,
         productName: product.name,
-        quantity: new D(item.quantity),
-        unitPrice: new D(item.unitPrice),
-        lineTotal,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
         lineCost: allocation.totalCost,
         lineProfit,
+        saleMode: line.saleMode,
+        packCount: line.packCount,
         allocations: allocation.pieces.map((p) => ({
           batchId: p.batchId,
           quantity: p.quantity,
@@ -131,7 +143,7 @@ export class SalesService {
         })),
       });
 
-      totalAmount = totalAmount.plus(lineTotal);
+      totalAmount = totalAmount.plus(line.lineTotal);
       totalCost = totalCost.plus(allocation.totalCost);
     }
 
@@ -170,24 +182,26 @@ export class SalesService {
         quantity: Prisma.Decimal;
         unitPrice: Prisma.Decimal;
         lineTotal: Prisma.Decimal;
+        saleMode: SaleMode;
+        packCount: Prisma.Decimal | null;
         allocation: FifoAllocation;
       }[] = [];
 
       // FIFO bo'yicha har itemni hisoblash + partiyalardan ayrish
       for (const item of dto.items) {
         const allocation = await this.fifo.allocate(tx, item.productId, item.quantity);
-        const quantity = new D(item.quantity);
-        const unitPrice = new D(item.unitPrice);
-        const lineTotal = quantity.times(unitPrice);
+        const line = this.resolveLine(item);
 
-        totalAmount = totalAmount.plus(lineTotal);
+        totalAmount = totalAmount.plus(line.lineTotal);
         totalCost = totalCost.plus(allocation.totalCost);
 
         itemPayloads.push({
           productId: item.productId,
-          quantity,
-          unitPrice,
-          lineTotal,
+          quantity: line.quantity,
+          unitPrice: line.unitPrice,
+          lineTotal: line.lineTotal,
+          saleMode: line.saleMode,
+          packCount: line.packCount,
           allocation,
         });
       }
@@ -207,6 +221,8 @@ export class SalesService {
               quantity: it.quantity,
               unitPrice: it.unitPrice,
               lineTotal: it.lineTotal,
+              saleMode: it.saleMode,
+              packCount: it.packCount,
               batches: {
                 create: it.allocation.pieces.map((p) => ({
                   batchId: p.batchId,
@@ -237,6 +253,35 @@ export class SalesService {
     }
 
     return sale;
+  }
+
+  /**
+   * Bitta sotuv qatorini hisoblaydi. PACK rejimida summa packCount × packPrice dan
+   * to'g'ridan-to'g'ri (bo'lishsiz) olinadi — shu sabab butun pachka narxi aniq yumaloq bo'ladi
+   * (masalan 1 karobka = 280 000, 279 999.99 emas). quantity har doim baseUnit da (FIFO uchun).
+   */
+  private resolveLine(item: CreateSaleItemDto): ResolvedLine {
+    const quantity = new D(item.quantity);
+
+    if (item.saleMode === SaleMode.PACK) {
+      if (item.packCount == null || item.packPrice == null) {
+        throw new BadRequestException("Pachka sotuvi uchun pachka soni va narxi kerak");
+      }
+      const packCount = new D(item.packCount);
+      const lineTotal = packCount.times(item.packPrice);
+      // Dona narxi — faqat ko'rsatish/moslik uchun (summa lineTotal dan olinadi)
+      const unitPrice = quantity.gt(0) ? lineTotal.div(quantity) : new D(0);
+      return { quantity, unitPrice, lineTotal, saleMode: SaleMode.PACK, packCount };
+    }
+
+    const unitPrice = new D(item.unitPrice);
+    return {
+      quantity,
+      unitPrice,
+      lineTotal: quantity.times(unitPrice),
+      saleMode: SaleMode.PIECE,
+      packCount: null,
+    };
   }
 
   private validatePayment(dto: CreateSaleDto): void {

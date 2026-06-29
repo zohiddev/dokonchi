@@ -184,9 +184,42 @@ Yoqish uchun (bir martalik):
 
 > Server URL workflow ichida `CAPROVER_HOST` env'da. Domen olganda shu qatorni yangilang.
 
-## Domen + HTTPS (keyin)
+## Domen + HTTPS (`dokonchiapp.uz`)
 
-Domen olganingizda:
-1. Settings → root domain'ni haqiqiy domenga o'zgartiring (DNS A-record → 185.182.184.190)
-2. `dokonchi` app → *Enable HTTPS* (1 bosish, Let's Encrypt)
-3. PWA (telefonga "ilova") ishlay boshlaydi
+**1. DNS** (domen registratorida, `185.182.184.190` ga):
+```
+A   @   185.182.184.190     # dokonchiapp.uz (apex)
+A   *   185.182.184.190     # wildcard: captain.*, adminer.* ... hammasi
+```
+`*` (wildcard) yozuvi barcha CapRover subdomenlarini qoplaydi. Tekshirish:
+`dig +short dokonchiapp.uz` va `dig +short captain.dokonchiapp.uz` → IP qaytishi kerak.
+
+**2. CapRover root domain + HTTPS** (panel `http://185.182.184.190:3000`):
+1. **Settings → root domain** → `dokonchiapp.uz` → *Update Domain*
+2. **Enable HTTPS** → email kiriting (Let's Encrypt). `captain.dokonchiapp.uz` resolve bo'lishi shart (1-qadam DNS).
+3. **Force HTTPS** ni yoqing. Endi panel: `https://captain.dokonchiapp.uz`.
+
+**3. Frontend app** (`dokonchi-front`):
+- **HTTP Settings → Add Domain** → `dokonchiapp.uz` (xohlasangiz `www.dokonchiapp.uz` ham) → *Enable HTTPS* → *Force HTTPS*.
+- Endi `https://dokonchiapp.uz` ochiladi va **PWA "ilova o'rnatish" ishlaydi**.
+- Eski `*.nip.io` domenini olib tashlasangiz bo'ladi.
+
+**4. Workflow:** `.github/workflows/deploy.yml` dagi `CAPROVER_HOST` allaqachon
+`https://captain.dokonchiapp.uz` (2-qadamdan KEYIN main'ga merge qiling, aks holda
+auto-deploy eski/yangi panelni topolmay qoladi).
+
+## Adminer — prod DB GUI (`adminer.dokonchiapp.uz`)
+
+Delivro'dagidek doimiy DB-panel: URL'ga kirib login/parol bilan ishlaysiz.
+
+1. **Apps → One-Click Apps/Databases → "Adminer"** → App Name: `dokonchi-adminer` → Deploy.
+   (One-Click'da bo'lmasa: app yarating → *Deploy via ImageName* → `adminer:latest` →
+   *HTTP Settings → Container HTTP Port = `8080`*.)
+2. **Env Vars:** `ADMINER_DEFAULT_SERVER=srv-captain--dokonchi-db` (Server maydoni oldindan to'ladi).
+3. **HTTP Settings → Add Domain** → `adminer.dokonchiapp.uz` → *Enable HTTPS* → *Force HTTPS*.
+4. Kirish: System `PostgreSQL`, Server `srv-captain--dokonchi-db`, User `dokonchi`,
+   Password *(prod PG paroli)*, Database `dokonchi`.
+
+> ⚠️ Adminer butun internetga ochiq — kuchli PG parol shart. Imkon bo'lsa app'ga
+> Basic Auth qo'shing yoki kerak bo'lmaganda to'xtatib qo'ying. HTTPS bo'lgani uchun
+> parol endi shifrlanib ketadi (nip.io HTTP'dan farqli).

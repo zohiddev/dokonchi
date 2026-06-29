@@ -27,9 +27,14 @@ export interface CreateBatchPayload {
   productId: number;
   supplierId?: number;
   receivedDate: string; // YYYY-MM-DD
-  quantityReceived: number;
-  costPricePerUnit: number;
+  // Base rejimi: quantityReceived + costPricePerUnit
+  quantityReceived?: number;
+  costPricePerUnit?: number;
+  // Pachka rejimi: packQuantity + costPerPack (backend packSize orqali hisoblaydi)
+  packQuantity?: number;
+  costPerPack?: number;
   salePricePerUnit?: number;
+  packSalePrice?: number; // shu partiya uchun butun-pachka narxi override
   amountPaid?: number; // shu partiya uchun darhol to'langan (ta'minotchi tanlangan bo'lsa)
   notes?: string;
 }

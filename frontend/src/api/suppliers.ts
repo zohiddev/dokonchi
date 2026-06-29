@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/axios';
-import type { Supplier } from '../types/api';
+import type { Product, Supplier } from '../types/api';
 
 export function useSuppliers() {
   return useQuery({
@@ -55,6 +55,15 @@ export function useSupplierHistory(id: number | null) {
     queryKey: ['suppliers', id, 'history'],
     queryFn: async () =>
       (await api.get<SupplierHistoryEntry[]>(`/suppliers/${id}/history`)).data,
+    enabled: id !== null,
+  });
+}
+
+// Ta'minotchi avval yetkazgan mahsulotlar (yetkazma modalida mahsulot select'ini filterlash uchun)
+export function useSupplierProducts(id: number | null) {
+  return useQuery({
+    queryKey: ['suppliers', id, 'products'],
+    queryFn: async () => (await api.get<Product[]>(`/suppliers/${id}/products`)).data,
     enabled: id !== null,
   });
 }

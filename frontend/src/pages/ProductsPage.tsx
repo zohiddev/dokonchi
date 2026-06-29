@@ -26,7 +26,9 @@ interface ProductFormValues {
   categoryId: number;
   baseUnit: Unit;
   packSize?: string;
+  packUnit?: string;
   defaultSalePrice?: string;
+  packSalePrice?: string;
   barcode?: string;
 }
 
@@ -201,7 +203,9 @@ export function ProductsPage() {
             categoryId: Number(values.categoryId),
             baseUnit: values.baseUnit,
             packSize: values.packSize ? Number(values.packSize) : null,
+            packUnit: values.packUnit?.trim() || null,
             defaultSalePrice: values.defaultSalePrice ? parseAmount(values.defaultSalePrice) : null,
+            packSalePrice: values.packSalePrice ? parseAmount(values.packSalePrice) : null,
             barcode: values.barcode || null,
           };
           try {
@@ -231,9 +235,14 @@ interface ProductModalProps {
 }
 
 function ProductModal({ open, product, onClose, categories, onSubmit }: ProductModalProps) {
-  const { register, handleSubmit, reset, formState: { isSubmitting, errors } } = useForm<ProductFormValues>({
+  const { register, handleSubmit, reset, watch, formState: { isSubmitting, errors } } = useForm<ProductFormValues>({
     defaultValues: { baseUnit: 'KG' },
   });
+
+  const baseUnit = watch('baseUnit');
+  const packUnitVal = watch('packUnit');
+  const baseLabel = UNITS.find((u) => u.value === baseUnit)?.label ?? baseUnit;
+  const packLabel = packUnitVal?.trim() || 'pachka';
 
   useEffect(() => {
     if (!open) return;
@@ -243,11 +252,13 @@ function ProductModal({ open, product, onClose, categories, onSubmit }: ProductM
         categoryId: product.categoryId,
         baseUnit: product.baseUnit,
         packSize: product.packSize != null ? String(product.packSize) : '',
+        packUnit: product.packUnit ?? '',
         defaultSalePrice: formatThousands(product.defaultSalePrice),
+        packSalePrice: formatThousands(product.packSalePrice),
         barcode: product.barcode ?? '',
       });
     } else {
-      reset({ name: '', categoryId: undefined, baseUnit: 'KG', packSize: '', defaultSalePrice: '', barcode: '' });
+      reset({ name: '', categoryId: undefined, baseUnit: 'KG', packSize: '', packUnit: '', defaultSalePrice: '', packSalePrice: '', barcode: '' });
     }
   }, [open, product, reset]);
 
@@ -289,14 +300,30 @@ function ProductModal({ open, product, onClose, categories, onSubmit }: ProductM
             </select>
           </Field>
         </div>
-        <div className="form-row">
-          <Field label="Sotuv narxi (so'm)">
-            <input {...moneyField(register('defaultSalePrice'))} placeholder="280 000" />
-          </Field>
-          <Field label="Pack size (ixt.)">
-            <input {...register('packSize')} placeholder="25" inputMode="decimal" />
+        <Field label={`Sotuv narxi — 1 ${baseLabel} (so'm)`}>
+          <input {...moneyField(register('defaultSalePrice'))} placeholder="1 100" />
+        </Field>
+
+        <div className="pack-block">
+          <div className="pack-head">
+            Pachka / optan birlik <span>(ixtiyoriy — mahsulot pachkada kelsa)</span>
+          </div>
+          <div className="form-row">
+            <Field label="Pachka nomi">
+              <input {...register('packUnit')} placeholder="fleyka / karobka / qop" />
+            </Field>
+            <Field label={`1 ${packLabel} = nechta ${baseLabel}`}>
+              <input {...register('packSize')} placeholder="30" inputMode="decimal" />
+            </Field>
+          </div>
+          <Field label={`Butun ${packLabel} narxi (ixt.)`}>
+            <input {...moneyField(register('packSalePrice'))} placeholder="280 000" />
+            <small className="pack-hint">
+              To'ldirsangiz — sotuvda "{packLabel}" qilib ham sotish mumkin bo'ladi. Bo'sh qoldirsangiz faqat dona sotiladi (masalan tuxum).
+            </small>
           </Field>
         </div>
+
         <Field label="Shtrix-kod (ixt.)">
           <input {...register('barcode')} placeholder="4780123456789" />
         </Field>
@@ -305,6 +332,22 @@ function ProductModal({ open, product, onClose, categories, onSubmit }: ProductM
       <style>{`
         .form { display: flex; flex-direction: column; gap: 14px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .pack-block {
+          display: flex; flex-direction: column; gap: 12px;
+          border: 1px dashed var(--line-strong);
+          border-radius: 11px;
+          padding: 12px;
+          background: var(--paper);
+        }
+        .pack-head {
+          font-size: 12px; font-weight: 700; color: var(--ink-soft);
+          text-transform: uppercase; letter-spacing: .4px;
+        }
+        .pack-head span {
+          text-transform: none; letter-spacing: 0; font-weight: 400;
+          color: var(--ink-faint);
+        }
+        .pack-hint { font-size: 11.5px; color: var(--ink-faint); text-transform: none; letter-spacing: 0; }
       `}</style>
     </Modal>
   );

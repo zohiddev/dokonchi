@@ -62,6 +62,24 @@ export class SuppliersService {
     return this.computeBalance(id);
   }
 
+  // Ta'minotchi avval yetkazgan (partiyalari bo'lgan) faol mahsulotlar — yetkazma qo'shishda
+  // mahsulot select'ini filterlash uchun. Tarix bo'lmasa bo'sh ro'yxat (frontend hammasiga qaytadi).
+  async products(id: number) {
+    await this.findOne(id);
+    const rows = await this.prisma.batch.findMany({
+      where: { supplierId: id },
+      select: { productId: true },
+      distinct: ['productId'],
+    });
+    const ids = rows.map((r) => r.productId);
+    if (ids.length === 0) return [];
+    return this.prisma.product.findMany({
+      where: { id: { in: ids }, isActive: true },
+      include: { category: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   // Ta'minotchi bo'yicha oldi-berdi: jami olingan tovar (tannarx), to'langan, qarz,
   // sotilgan/qolgan tovar qiymati
   async computeBalance(id: number) {

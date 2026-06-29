@@ -42,6 +42,12 @@ export class SuppliersController {
     return this.suppliers.history(id);
   }
 
+  @Get(':id/products')
+  @ApiOperation({ summary: "Ta'minotchi avval yetkazgan mahsulotlar (yetkazma modalida filtr uchun)" })
+  products(@Param('id', ParseIntPipe) id: number) {
+    return this.suppliers.products(id);
+  }
+
   @Post('payments')
   @ApiOperation({ summary: "Ta'minotchiga to'lov qabul qilish" })
   createPayment(@Body() dto: CreateSupplierPaymentDto) {

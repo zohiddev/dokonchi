@@ -8,7 +8,11 @@ import { Modal } from './ui/Modal';
 import { useToast } from './ui/Toast';
 import { extractError } from '../lib/axios';
 import { formatThousands, money, parseAmount, qty as qtyFmt } from '../lib/format';
-import type { InventoryRow, PaymentType } from '../types/api';
+import type { InventoryRow, PaymentType, SaleMode } from '../types/api';
+
+const UNIT_LABEL: Record<string, string> = {
+  KG: 'kg', DONA: 'dona', LITR: 'L', QOP: 'qop', QUTI: 'quti',
+};
 
 interface Props {
   open: boolean;
@@ -21,9 +25,13 @@ interface Line {
   productId: number;
   name: string;
   unit: string;
-  quantity: number;
+  quantity: number; // baseUnit da
   unitPrice: number;
   stock: number;
+  saleMode: SaleMode;
+  packSize: number;
+  packUnit: string | null;
+  packPrice: number;
 }
 
 /**
@@ -71,6 +79,11 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
     onClose();
   };
 
+  const maxBaseQty = (line: Line) =>
+    line.saleMode === 'PACK' && line.packSize > 0
+      ? Math.floor(line.stock / line.packSize) * line.packSize
+      : line.stock;
+
   const addProduct = (p: InventoryRow) => {
     const stock = Number(p.totalRemaining);
     if (stock <= 0) return;
@@ -78,8 +91,9 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
       const next = new Map(prev);
       const existing = next.get(p.productId);
       if (existing) {
-        if (existing.quantity < stock) {
-          next.set(p.productId, { ...existing, quantity: existing.quantity + 1 });
+        const step = existing.saleMode === 'PACK' && existing.packSize > 0 ? existing.packSize : 1;
+        if (existing.quantity + step <= stock) {
+          next.set(p.productId, { ...existing, quantity: existing.quantity + step });
         }
       } else {
         next.set(p.productId, {
@@ -89,6 +103,10 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
           quantity: 1,
           unitPrice: p.currentSalePrice ? Number(p.currentSalePrice) : 0,
           stock,
+          saleMode: 'PIECE',
+          packSize: p.packSize ? Number(p.packSize) : 0,
+          packUnit: p.packUnit,
+          packPrice: p.currentPackSalePrice ? Number(p.currentPackSalePrice) : 0,
         });
       }
       return next;
@@ -96,12 +114,14 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
     setSearch('');
   };
 
+  // value — joriy rejim birligida (pachka soni yoki dona soni)
   const updateQty = (productId: number, value: string) => {
     setLines((prev) => {
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      const q = Math.max(0, Math.min(Number(value) || 0, line.stock));
+      const factor = line.saleMode === 'PACK' && line.packSize > 0 ? line.packSize : 1;
+      const q = Math.max(0, Math.min((Number(value) || 0) * factor, maxBaseQty(line)));
       if (q === 0) next.delete(productId);
       else next.set(productId, { ...line, quantity: q });
       return next;
@@ -113,7 +133,8 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      const q = Math.max(0, Math.min(line.quantity + delta, line.stock));
+      const step = line.saleMode === 'PACK' && line.packSize > 0 ? line.packSize : 1;
+      const q = Math.max(0, Math.min(line.quantity + delta * step, maxBaseQty(line)));
       if (q === 0) next.delete(productId);
       else next.set(productId, { ...line, quantity: q });
       return next;
@@ -125,7 +146,25 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      next.set(productId, { ...line, unitPrice: Math.max(0, parseAmount(value)) });
+      const v = Math.max(0, parseAmount(value));
+      next.set(productId, line.saleMode === 'PACK' ? { ...line, packPrice: v } : { ...line, unitPrice: v });
+      return next;
+    });
+  };
+
+  const setMode = (productId: number, sm: SaleMode) => {
+    setLines((prev) => {
+      const next = new Map(prev);
+      const line = next.get(productId);
+      if (!line || line.packSize <= 0) return prev;
+      if (sm === 'PACK') {
+        const maxPacks = Math.floor(line.stock / line.packSize);
+        if (maxPacks < 1) return prev;
+        const packs = Math.min(Math.max(1, Math.round(line.quantity / line.packSize)), maxPacks);
+        next.set(productId, { ...line, saleMode: 'PACK', quantity: packs * line.packSize });
+      } else {
+        next.set(productId, { ...line, saleMode: 'PIECE' });
+      }
       return next;
     });
   };
@@ -138,18 +177,33 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
     });
   };
 
+  const lineTotalOf = (l: Line) =>
+    l.saleMode === 'PACK' && l.packSize > 0 ? (l.quantity / l.packSize) * l.packPrice : l.quantity * l.unitPrice;
+
   const lineList = Array.from(lines.values());
-  const total = lineList.reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+  const total = lineList.reduce((s, l) => s + lineTotalOf(l), 0);
 
   const canSubmit = !!activeCustomer && lineList.length > 0 && !createSale.isPending;
 
   const submit = async () => {
     if (!canSubmit || !activeCustomer) return;
-    const payload: CreateSaleItemInput[] = lineList.map((l) => ({
-      productId: l.productId,
-      quantity: l.quantity,
-      unitPrice: l.unitPrice,
-    }));
+    const payload: CreateSaleItemInput[] = lineList.map((l) => {
+      if (l.saleMode === 'PACK' && l.packSize > 0) {
+        return {
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.packPrice / l.packSize,
+          saleMode: 'PACK',
+          packCount: l.quantity / l.packSize,
+          packPrice: l.packPrice,
+        };
+      }
+      return {
+        productId: l.productId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+      };
+    });
     try {
       await createSale.mutateAsync({
         paymentType,
@@ -243,41 +297,59 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
               {lineList.length === 0 && (
                 <div className="qsale-empty">Hali tovar qo'shilmadi</div>
               )}
-              {lineList.map((l) => (
-                <div className="qsale-line" key={l.productId}>
-                  <div className="qsale-line-top">
-                    <span className="qsale-line-name">{l.name}</span>
-                    <button
-                      type="button"
-                      className="qsale-rm"
-                      onClick={() => removeLine(l.productId)}
-                      title="O'chirish"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="qsale-line-ctl">
-                    <div className="qty-ctl">
-                      <button type="button" onClick={() => stepQty(l.productId, -1)} disabled={l.quantity <= 1}>−</button>
-                      <input
-                        className="qty-input num"
-                        value={l.quantity}
-                        onChange={(e) => updateQty(l.productId, e.target.value)}
-                        inputMode="decimal"
-                      />
-                      <button type="button" onClick={() => stepQty(l.productId, 1)} disabled={l.quantity >= l.stock}>+</button>
+              {lineList.map((l) => {
+                const isPack = l.saleMode === 'PACK' && l.packSize > 0;
+                const canPack = l.packSize > 0 && l.packPrice > 0;
+                const displayCount = isPack ? l.quantity / l.packSize : l.quantity;
+                const displayPrice = isPack ? l.packPrice : l.unitPrice;
+                const unitLabel = isPack ? (l.packUnit || 'pachka') : (UNIT_LABEL[l.unit] ?? l.unit);
+                return (
+                  <div className="qsale-line" key={l.productId}>
+                    <div className="qsale-line-top">
+                      <span className="qsale-line-name">{l.name}</span>
+                      <button
+                        type="button"
+                        className="qsale-rm"
+                        onClick={() => removeLine(l.productId)}
+                        title="O'chirish"
+                      >
+                        ×
+                      </button>
                     </div>
-                    <span className="x">×</span>
-                    <input
-                      className="price-input num"
-                      value={formatThousands(l.unitPrice)}
-                      onChange={(e) => setPrice(l.productId, e.target.value)}
-                      inputMode="numeric"
-                    />
-                    <span className="qsale-line-total num">= {money(l.quantity * l.unitPrice, false)}</span>
+                    {canPack && (
+                      <div className="mode-seg">
+                        <button type="button" className={!isPack ? 'active' : ''} onClick={() => setMode(l.productId, 'PIECE')}>
+                          {UNIT_LABEL[l.unit] ?? l.unit}
+                        </button>
+                        <button type="button" className={isPack ? 'active' : ''} onClick={() => setMode(l.productId, 'PACK')}>
+                          {l.packUnit || 'pachka'}
+                        </button>
+                      </div>
+                    )}
+                    <div className="qsale-line-ctl">
+                      <div className="qty-ctl">
+                        <button type="button" onClick={() => stepQty(l.productId, -1)} disabled={displayCount <= 1}>−</button>
+                        <input
+                          className="qty-input num"
+                          value={displayCount}
+                          onChange={(e) => updateQty(l.productId, e.target.value)}
+                          inputMode="decimal"
+                        />
+                        <button type="button" onClick={() => stepQty(l.productId, 1)} disabled={l.quantity >= maxBaseQty(l)}>+</button>
+                      </div>
+                      <span className="unit-tag">{unitLabel}</span>
+                      <span className="x">×</span>
+                      <input
+                        className="price-input num"
+                        value={formatThousands(displayPrice)}
+                        onChange={(e) => setPrice(l.productId, e.target.value)}
+                        inputMode="numeric"
+                      />
+                      <span className="qsale-line-total num">= {money(lineTotalOf(l), false)}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="paybar">
@@ -369,6 +441,18 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
           width: 22px; height: 22px; border-radius: 5px;
         }
         .qsale-rm:hover { color: var(--brick); background: var(--brick-soft); }
+        .mode-seg {
+          display: inline-flex; gap: 2px; align-self: flex-start;
+          background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 2px;
+        }
+        .mode-seg button {
+          border: none; background: transparent; cursor: pointer;
+          font-family: inherit; font-size: 11px; font-weight: 600; color: var(--ink-soft);
+          padding: 3px 9px; border-radius: 5px;
+        }
+        .mode-seg button:hover { color: var(--ink); }
+        .mode-seg button.active { background: var(--accent); color: var(--paper-2); }
+        .unit-tag { font-size: 11px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
         .qsale-line-ctl { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
         .qty-ctl {
           display: flex; align-items: center;

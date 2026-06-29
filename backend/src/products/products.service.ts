@@ -49,8 +49,10 @@ export class ProductsService {
           categoryId: dto.categoryId,
           baseUnit: dto.baseUnit,
           packSize: dto.packSize ?? null,
+          packUnit: dto.packUnit ?? null,
           barcode: dto.barcode ?? null,
           defaultSalePrice: dto.defaultSalePrice ?? null,
+          packSalePrice: dto.packSalePrice ?? null,
           isActive: dto.isActive ?? true,
         },
         include: { category: true },
@@ -74,8 +76,10 @@ export class ProductsService {
     }
     if (dto.baseUnit !== undefined) data.baseUnit = dto.baseUnit;
     if (dto.packSize !== undefined) data.packSize = dto.packSize;
+    if (dto.packUnit !== undefined) data.packUnit = dto.packUnit || null;
     if (dto.barcode !== undefined) data.barcode = dto.barcode || null;
     if (dto.defaultSalePrice !== undefined) data.defaultSalePrice = dto.defaultSalePrice;
+    if (dto.packSalePrice !== undefined) data.packSalePrice = dto.packSalePrice;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
 
     try {
