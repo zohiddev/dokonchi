@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsDateString,
   IsInt,
   IsNumber,
@@ -9,25 +11,17 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
 
-export class CreateBatchDto {
+// Yetkazmadagi bitta mahsulot qatori — base yoki pachka rejimida.
+// (CreateBatchDto ning per-mahsulot maydonlari bilan bir xil.)
+export class CreateDeliveryLineDto {
   @ApiProperty({ example: 1 })
   @Type(() => Number)
   @IsInt()
   @IsPositive()
   productId!: number;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsPositive()
-  supplierId?: number;
-
-  @ApiProperty({ example: '2026-05-28' })
-  @IsDateString()
-  receivedDate!: string;
 
   @ApiPropertyOptional({
     example: 50,
@@ -56,7 +50,7 @@ export class CreateBatchDto {
   @Min(0.001)
   packQuantity?: number;
 
-  @ApiPropertyOptional({ example: 28000, description: "Bitta pachka kirim narxi (masalan 1 fleyka = 28000)" })
+  @ApiPropertyOptional({ example: 28000, description: 'Bitta pachka kirim narxi (masalan 1 fleyka = 28000)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -77,9 +71,28 @@ export class CreateBatchDto {
   @Min(0)
   packSalePrice?: number;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  notes?: string;
+}
+
+export class CreateDeliveryDto {
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  supplierId?: number;
+
+  @ApiProperty({ example: '2026-05-28' })
+  @IsDateString()
+  receivedDate!: string;
+
   @ApiPropertyOptional({
     example: 1000000,
-    description: "Shu partiya uchun darhol to'langan summa (ta'minotchi tanlangan bo'lsa)",
+    description: "Butun yetkazma uchun darhol to'langan summa (ta'minotchi tanlangan bo'lsa)",
   })
   @IsOptional()
   @Type(() => Number)
@@ -92,4 +105,11 @@ export class CreateBatchDto {
   @IsString()
   @MaxLength(500)
   notes?: string;
+
+  @ApiProperty({ type: [CreateDeliveryLineDto], description: 'Yetkazmadagi mahsulot qatorlari (kamida 1 ta)' })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => CreateDeliveryLineDto)
+  lines!: CreateDeliveryLineDto[];
 }

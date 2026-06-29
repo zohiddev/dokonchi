@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { CustomersModule } from './customers/customers.module';
 import { DebtsModule } from './debts/debts.module';
+import { DeliveriesModule } from './deliveries/deliveries.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -29,6 +30,7 @@ import { UsersModule } from './users/users.module';
     ProductsModule,
     SuppliersModule,
     BatchesModule,
+    DeliveriesModule,
     SalesModule,
     InventoryModule,
     CustomersModule,

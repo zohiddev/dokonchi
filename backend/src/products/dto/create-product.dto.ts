@@ -31,12 +31,25 @@ export class CreateProductDto {
   @IsEnum(Unit)
   baseUnit!: Unit;
 
-  @ApiProperty({ required: false, example: 25, description: '1 qop = packSize kg' })
+  @ApiProperty({ required: false, example: 30, description: '1 pachka = packSize baseUnit (masalan 1 fleyka = 30 dona)' })
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
   packSize?: number;
+
+  @ApiProperty({ required: false, example: 'fleyka', description: "Pachka/bulk birlik yorlig'i: fleyka, karobka, qop..." })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  packUnit?: string;
+
+  @ApiProperty({ required: false, example: 280000, description: "Butun pachka sotuv narxi (null = pachka qilib sotilmaydi)" })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  packSalePrice?: number;
 
   @ApiProperty({ required: false, example: '4780123456789' })
   @IsOptional()

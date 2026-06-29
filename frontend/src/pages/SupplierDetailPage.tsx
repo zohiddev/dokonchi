@@ -8,6 +8,7 @@ import {
   type SupplierHistoryEntry,
 } from '../api/suppliers';
 import { BotInviteButton } from '../components/BotInviteButton';
+import { NewDeliveryModal } from '../components/NewDeliveryModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -28,6 +29,7 @@ export function SupplierDetailPage() {
   const history = useSupplierHistory(supplierId);
 
   const [payOpen, setPayOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
 
   if (supplier.isLoading) {
     return <div style={{ padding: 32, textAlign: 'center' }}><Spinner /></div>;
@@ -50,9 +52,14 @@ export function SupplierDetailPage() {
     <div className="sd-page">
       <div className="sd-top">
         <Link to="/suppliers" className="back-link">← Ta'minotchilar</Link>
-        <Button onClick={() => setPayOpen(true)} icon={<IconPay />}>
-          To'lov qilish
-        </Button>
+        <div className="sd-actions">
+          <Button onClick={() => setDeliveryOpen(true)} icon={<IconBox />}>
+            Partiya qabul qilish
+          </Button>
+          <Button variant="ghost" onClick={() => setPayOpen(true)} icon={<IconPay />}>
+            To'lov qilish
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -155,6 +162,12 @@ export function SupplierDetailPage() {
         balance={b?.balance}
       />
 
+      <NewDeliveryModal
+        open={deliveryOpen}
+        onClose={() => setDeliveryOpen(false)}
+        defaultSupplierId={s.id}
+      />
+
       <style>{`
         .sd-page { display: flex; flex-direction: column; gap: 16px; }
         .sd-top {
@@ -163,6 +176,7 @@ export function SupplierDetailPage() {
         }
         .back-link { color: var(--ink-soft); font-size: 13px; font-weight: 500; padding: 4px 0; }
         .back-link:hover { color: var(--accent); }
+        .sd-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
         .head-row {
           display: flex; gap: 16px; justify-content: space-between; align-items: start;
@@ -386,6 +400,14 @@ function IconPay() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="5" width="20" height="14" rx="2" />
       <path d="M2 10h20" />
+    </svg>
+  );
+}
+
+function IconBox() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" />
     </svg>
   );
 }

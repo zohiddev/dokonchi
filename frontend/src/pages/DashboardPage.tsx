@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useDashboard } from '../api/reports';
-import { NewBatchModal } from '../components/NewBatchModal';
+import { NewDeliveryModal } from '../components/NewDeliveryModal';
 import { QuickCustomerSaleModal } from '../components/QuickCustomerSaleModal';
 import { QuickDebtPaymentModal } from '../components/QuickDebtPaymentModal';
 import { QuickSupplierPaymentModal } from '../components/QuickSupplierPaymentModal';
@@ -87,7 +87,7 @@ export function DashboardPage() {
 
       <QuickDebtPaymentModal open={payOpen} onClose={() => setPayOpen(false)} />
       <QuickCustomerSaleModal open={saleOpen} onClose={() => setSaleOpen(false)} />
-      <NewBatchModal open={batchOpen} onClose={() => setBatchOpen(false)} />
+      <NewDeliveryModal open={batchOpen} onClose={() => setBatchOpen(false)} />
       <QuickSupplierPaymentModal open={supplierPayOpen} onClose={() => setSupplierPayOpen(false)} />
 
       <style>{`

@@ -9,6 +9,7 @@ export interface Paginated<T> {
 export type Role = 'ADMIN' | 'SOTUVCHI';
 export type Unit = 'KG' | 'DONA' | 'LITR' | 'QOP' | 'QUTI';
 export type PaymentType = 'NAQD' | 'KARTA' | 'NASIYA';
+export type SaleMode = 'PIECE' | 'PACK';
 
 export interface AuthUser {
   id: number;
@@ -43,7 +44,9 @@ export interface Product {
   barcode: string | null;
   baseUnit: Unit;
   packSize: string | null;
+  packUnit: string | null;
   defaultSalePrice: string | null;
+  packSalePrice: string | null;
   isActive: boolean;
   createdAt: string;
   category?: Category;
@@ -69,18 +72,33 @@ export interface Batch {
   id: number;
   productId: number;
   supplierId: number | null;
+  deliveryId: number | null;
   receivedDate: string;
   weekLabel: string;
   quantityReceived: string;
   quantityRemaining: string;
   costPricePerUnit: string;
   salePricePerUnit: string | null;
+  costPerPack: string | null;
+  packSalePrice: string | null;
   notes: string | null;
   createdAt: string;
   product?: Product;
   supplier?: Supplier;
   ageDays?: number;
   remainingRatio?: number;
+}
+
+// Bitta yetkazma (kirim) — bir nechta mahsulot-partiyasini guruhlaydi
+export interface Delivery {
+  id: number;
+  supplierId: number | null;
+  receivedDate: string;
+  weekLabel: string;
+  notes: string | null;
+  createdAt: string;
+  supplier?: Supplier | null;
+  batches?: Batch[];
 }
 
 export interface SaleItemBatch {
@@ -97,6 +115,8 @@ export interface SaleItem {
   quantity: string;
   unitPrice: string;
   lineTotal: string;
+  saleMode: SaleMode;
+  packCount: string | null;
   product?: Product;
   batches?: SaleItemBatch[];
 }
@@ -141,10 +161,12 @@ export interface InventoryRow {
   category: Category;
   baseUnit: Unit;
   packSize: string | null;
+  packUnit: string | null;
   activeBatchCount: number;
   totalRemaining: string;
   avgCost: string | null;
   currentSalePrice: string | null;
+  currentPackSalePrice: string | null;
 }
 
 export interface DashboardData {
@@ -197,6 +219,8 @@ export interface SalePreviewItem {
   lineTotal: string;
   lineCost: string;
   lineProfit: string;
+  saleMode: SaleMode;
+  packCount: string | null;
   allocations: { batchId: number; quantity: string; costPrice: string }[];
 }
 

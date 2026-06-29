@@ -535,6 +535,50 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // Bitta yetkazma (bir nechta mahsulot) qabul qilinganda — bitta xabarda hammasini ko'rsatamiz
+  async notifySupplierDelivery(deliveryId: number): Promise<void> {
+    if (!this.token) return;
+    try {
+      const delivery = await this.prisma.delivery.findUnique({
+        where: { id: deliveryId },
+        include: {
+          supplier: true,
+          batches: { include: { product: { select: { name: true, baseUnit: true } } } },
+        },
+      });
+      if (!delivery?.supplier?.telegramChatId) return;
+
+      let total = new D(0);
+      const lines = delivery.batches.map((b) => {
+        const lineTotal = new D(b.quantityReceived).mul(b.costPricePerUnit);
+        total = total.plus(lineTotal);
+        return (
+          `• ${b.product.name} — ${fmtQty(b.quantityReceived, b.product.baseUnit)} × ` +
+          `${fmtMoney(b.costPricePerUnit)} = ${fmtMoney(lineTotal)}`
+        );
+      });
+
+      const paidAgg = await this.prisma.supplierPayment.aggregate({
+        where: { deliveryId },
+        _sum: { amount: true },
+      });
+      const paid = paidAgg._sum.amount ?? new D(0);
+      const balance = (await this.computeSupplierBalance(delivery.supplier.id)).balance;
+
+      const text =
+        `📦 Tovar qabul qilindi — "${this.shopName}"\n` +
+        `${fmtDate(delivery.receivedDate)}\n\n` +
+        `${lines.join('\n')}\n\n` +
+        `Jami: ${fmtMoney(total)} so'm` +
+        (paid.gt(0) ? `\nTo'landi: ${fmtMoney(paid)} so'm` : '') +
+        `\n💰 Sizga umumiy qarzimiz: ${fmtMoney(balance)} so'm`;
+
+      await this.send(delivery.supplier.telegramChatId, text);
+    } catch (e) {
+      this.logger.error(`notifySupplierDelivery xato: ${errMsg(e)}`);
+    }
+  }
+
   async notifySupplierPayment(paymentId: number): Promise<void> {
     if (!this.token) return;
     try {

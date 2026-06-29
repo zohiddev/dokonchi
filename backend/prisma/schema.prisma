@@ -26,6 +26,11 @@ enum PaymentType {
   NASIYA
 }
 
+enum SaleMode {
+  PIECE
+  PACK
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   name         String
@@ -50,7 +55,11 @@ model Product {
   barcode          String?    @unique
   baseUnit         Unit
   packSize         Decimal?   @db.Decimal(12, 3)
+  // Pachka/bulk birlik yorlig'i (erkin matn): "fleyka", "karobka", "qop"...
+  packUnit         String?
   defaultSalePrice Decimal?   @db.Decimal(14, 2)
+  // Butun pachka sotuv narxi (standart). null = pachka qilib sotilmaydi (masalan tuxum)
+  packSalePrice    Decimal?   @db.Decimal(14, 2)
   isActive         Boolean    @default(true)
   batches          Batch[]
   saleItems        SaleItem[]
@@ -64,8 +73,25 @@ model Supplier {
   notes    String?
   // Telegram bildirishnoma uchun chat id (ta'minotchi botga telefonini ulaganda saqlanadi)
   telegramChatId String?
-  batches  Batch[]
-  payments SupplierPayment[]
+  batches    Batch[]
+  deliveries Delivery[]
+  payments   SupplierPayment[]
+}
+
+// Bitta yetkazma (kirim) — bir ta'minotchidan bir kelishda kelgan bir nechta mahsulot.
+// Har bir mahsulot qatori alohida Batch (stock lot) bo'lib qoladi; Delivery ularni guruhlaydi.
+model Delivery {
+  id           Int               @id @default(autoincrement())
+  supplierId   Int?
+  supplier     Supplier?         @relation(fields: [supplierId], references: [id])
+  receivedDate DateTime
+  weekLabel    String
+  notes        String?
+  batches      Batch[]
+  payments     SupplierPayment[]
+  createdAt    DateTime          @default(now())
+
+  @@index([receivedDate])
 }
 
 model Batch {
@@ -74,18 +100,27 @@ model Batch {
   product           Product         @relation(fields: [productId], references: [id])
   supplierId        Int?
   supplier          Supplier?       @relation(fields: [supplierId], references: [id])
+  // Qaysi yetkazmaga tegishli (bir yetkazmada bir nechta mahsulot/batch bo'lishi mumkin)
+  deliveryId        Int?
+  delivery          Delivery?       @relation(fields: [deliveryId], references: [id])
   receivedDate      DateTime
   weekLabel         String
   quantityReceived  Decimal         @db.Decimal(14, 3)
   quantityRemaining Decimal         @db.Decimal(14, 3)
-  costPricePerUnit  Decimal         @db.Decimal(14, 2)
+  // Dona tannarx. Pachkadan hisoblanganda yaxlitlash siljimasligi uchun 4 xonali
+  costPricePerUnit  Decimal         @db.Decimal(14, 4)
   salePricePerUnit  Decimal?        @db.Decimal(14, 2)
+  // Pachka bo'yicha kirim narxi (provenance/ko'rsatish uchun)
+  costPerPack       Decimal?        @db.Decimal(14, 2)
+  // Butun pachka sotuv narxi — shu partiya uchun override (product.packSalePrice ustidan)
+  packSalePrice     Decimal?        @db.Decimal(14, 2)
   notes             String?
   allocations       SaleItemBatch[]
   payments          SupplierPayment[]
   createdAt         DateTime        @default(now())
 
   @@index([productId, receivedDate])
+  @@index([deliveryId])
 }
 
 model Customer {
@@ -128,6 +163,9 @@ model SaleItem {
   quantity  Decimal         @db.Decimal(14, 3)
   unitPrice Decimal         @db.Decimal(14, 2)
   lineTotal Decimal         @db.Decimal(14, 2)
+  // Sotuv usuli: dona (PIECE) yoki butun pachka (PACK). packCount — PACK bo'lsa nechta pachka
+  saleMode  SaleMode        @default(PIECE)
+  packCount Decimal?        @db.Decimal(14, 3)
   batches   SaleItemBatch[]
 }
 
@@ -150,15 +188,18 @@ model DebtPayment {
   notes       String?
 }
 
-// Ta'minotchiga to'lov — partiya qo'shilganda (boshlang'ich) yoki keyin alohida
+// Ta'minotchiga to'lov — yetkazma qo'shilganda (boshlang'ich) yoki keyin alohida.
+// deliveryId — butun yetkazmaga to'lov; batchId — eski yagona-batch yo'li (moslik uchun).
 model SupplierPayment {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   supplierId  Int
-  supplier    Supplier @relation(fields: [supplierId], references: [id])
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
   batchId     Int?
-  batch       Batch?   @relation(fields: [batchId], references: [id])
-  amount      Decimal  @db.Decimal(14, 2)
-  paymentDate DateTime @default(now())
+  batch       Batch?    @relation(fields: [batchId], references: [id])
+  deliveryId  Int?
+  delivery    Delivery? @relation(fields: [deliveryId], references: [id])
+  amount      Decimal   @db.Decimal(14, 2)
+  paymentDate DateTime  @default(now())
   notes       String?
 
   @@index([supplierId])

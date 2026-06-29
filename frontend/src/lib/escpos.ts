@@ -139,7 +139,15 @@ export function buildReceipt(sale: Sale, s: ReceiptSettings): Uint8Array {
   for (const it of sale.items ?? []) {
     const name = it.product?.name ?? `Mahsulot #${it.productId}`;
     p.line(name);
-    const left = `  ${trimNum(it.quantity)} x ${money(it.unitPrice, false)}`;
+    let left: string;
+    if (it.saleMode === 'PACK' && it.packCount && Number(it.packCount) > 0) {
+      // Butun pachka sotuvi: "1 karobka x 280 000" (aniq yumaloq narx)
+      const packUnit = it.product?.packUnit || 'pachka';
+      const packPrice = Number(it.lineTotal) / Number(it.packCount);
+      left = `  ${trimNum(it.packCount)} ${packUnit} x ${money(packPrice, false)}`;
+    } else {
+      left = `  ${trimNum(it.quantity)} x ${money(it.unitPrice, false)}`;
+    }
     p.line(twoCol(left, money(it.lineTotal, false), W));
   }
 

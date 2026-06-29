@@ -10,7 +10,11 @@ import { useToast } from './ui/Toast';
 import { usePrinter } from './PrinterContext';
 import { extractError } from '../lib/axios';
 import { formatThousands, money, parseAmount, qty as qtyFmt } from '../lib/format';
-import type { InventoryRow, PaymentType } from '../types/api';
+import type { InventoryRow, PaymentType, SaleMode } from '../types/api';
+
+const UNIT_LABEL: Record<string, string> = {
+  KG: 'kg', DONA: 'dona', LITR: 'L', QOP: 'qop', QUTI: 'quti',
+};
 
 interface NewSaleModalProps {
   open: boolean;
@@ -21,9 +25,14 @@ interface CartLine {
   productId: number;
   productName: string;
   unit: string;
-  quantity: number;
-  unitPrice: number;
+  quantity: number; // HAR DOIM baseUnit da (stok bilan mos)
+  unitPrice: number; // dona narxi (baseUnit uchun)
   stockRemaining: number;
+  // Pachka qo'llab-quvvatlash
+  saleMode: SaleMode;
+  packSize: number; // 0 = pachka yo'q
+  packUnit: string | null;
+  packPrice: number; // butun pachka narxi (0 = yo'q)
 }
 
 export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
@@ -82,11 +91,24 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
   // Cart → preview payload
   const validLines = useMemo<CreateSaleItemInput[]>(
     () =>
-      Array.from(cart.values()).map((l) => ({
-        productId: l.productId,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-      })),
+      Array.from(cart.values()).map((l) => {
+        if (l.saleMode === 'PACK' && l.packSize > 0) {
+          const packCount = l.quantity / l.packSize;
+          return {
+            productId: l.productId,
+            quantity: l.quantity, // baseUnit da (FIFO uchun)
+            unitPrice: l.packPrice / l.packSize, // dona narxi — ko'rsatish uchun
+            saleMode: 'PACK',
+            packCount,
+            packPrice: l.packPrice, // aniq summa shu dan hisoblanadi
+          };
+        }
+        return {
+          productId: l.productId,
+          quantity: l.quantity,
+          unitPrice: l.unitPrice,
+        };
+      }),
     [cart],
   );
 
@@ -116,8 +138,9 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
       const next = new Map(prev);
       const existing = next.get(p.productId);
       if (existing) {
-        if (existing.quantity >= stockN) return prev;
-        next.set(p.productId, { ...existing, quantity: existing.quantity + 1 });
+        const step = existing.saleMode === 'PACK' && existing.packSize > 0 ? existing.packSize : 1;
+        if (existing.quantity + step > stockN) return prev;
+        next.set(p.productId, { ...existing, quantity: existing.quantity + step });
       } else {
         next.set(p.productId, {
           productId: p.productId,
@@ -126,30 +149,44 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           quantity: 1,
           unitPrice: p.currentSalePrice ? Number(p.currentSalePrice) : 0,
           stockRemaining: stockN,
+          saleMode: 'PIECE',
+          packSize: p.packSize ? Number(p.packSize) : 0,
+          packUnit: p.packUnit,
+          packPrice: p.currentPackSalePrice ? Number(p.currentPackSalePrice) : 0,
         });
       }
       return next;
     });
   };
 
+  // baseUnit dagi maksimal miqdor (pachka rejimida packSize ga karrali)
+  const maxBaseQty = (line: CartLine) =>
+    line.saleMode === 'PACK' && line.packSize > 0
+      ? Math.floor(line.stockRemaining / line.packSize) * line.packSize
+      : line.stockRemaining;
+
+  // delta — joriy rejim birligida (pachka yoki dona)
   const updateQty = (productId: number, delta: number) => {
     setCart((prev) => {
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      const q = Math.max(0, Math.min(line.quantity + delta, line.stockRemaining));
+      const step = line.saleMode === 'PACK' && line.packSize > 0 ? line.packSize : 1;
+      const q = Math.max(0, Math.min(line.quantity + delta * step, maxBaseQty(line)));
       if (q === 0) next.delete(productId);
       else next.set(productId, { ...line, quantity: q });
       return next;
     });
   };
 
+  // value — joriy rejim birligida kiritiladi (pachka soni yoki dona soni)
   const setQty = (productId: number, value: string) => {
     setCart((prev) => {
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      const q = Math.max(0, Math.min(Number(value) || 0, line.stockRemaining));
+      const factor = line.saleMode === 'PACK' && line.packSize > 0 ? line.packSize : 1;
+      const q = Math.max(0, Math.min((Number(value) || 0) * factor, maxBaseQty(line)));
       if (q === 0) next.delete(productId);
       else next.set(productId, { ...line, quantity: q });
       return next;
@@ -161,7 +198,26 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
       const next = new Map(prev);
       const line = next.get(productId);
       if (!line) return prev;
-      next.set(productId, { ...line, unitPrice: Math.max(0, parseAmount(value)) });
+      const v = Math.max(0, parseAmount(value));
+      next.set(productId, line.saleMode === 'PACK' ? { ...line, packPrice: v } : { ...line, unitPrice: v });
+      return next;
+    });
+  };
+
+  // Dona / pachka rejimini almashtirish
+  const setMode = (productId: number, sm: SaleMode) => {
+    setCart((prev) => {
+      const next = new Map(prev);
+      const line = next.get(productId);
+      if (!line || line.packSize <= 0) return prev;
+      if (sm === 'PACK') {
+        const maxPacks = Math.floor(line.stockRemaining / line.packSize);
+        if (maxPacks < 1) return prev; // bir pachkaga ham yetmaydi
+        const packs = Math.min(Math.max(1, Math.round(line.quantity / line.packSize)), maxPacks);
+        next.set(productId, { ...line, saleMode: 'PACK', quantity: packs * line.packSize });
+      } else {
+        next.set(productId, { ...line, saleMode: 'PIECE' });
+      }
       return next;
     });
   };
@@ -193,11 +249,14 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
     }
   };
 
+  const lineTotalOf = (l: CartLine) =>
+    l.saleMode === 'PACK' && l.packSize > 0 ? (l.quantity / l.packSize) * l.packPrice : l.quantity * l.unitPrice;
+
   const cartCount = cart.size;
   const totalQty = Array.from(cart.values()).reduce((s, l) => s + l.quantity, 0);
   const cartTotal = preview.data
     ? Number(preview.data.totalAmount)
-    : Array.from(cart.values()).reduce((s, l) => s + l.quantity * l.unitPrice, 0);
+    : Array.from(cart.values()).reduce((s, l) => s + lineTotalOf(l), 0);
 
   const canSubmit =
     validLines.length > 0 &&
@@ -323,41 +382,65 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
                 <small>Mahsulotlardan tanlang</small>
               </div>
             )}
-            {Array.from(cart.values()).map((line) => (
-              <div className="cart-line" key={line.productId}>
-                <div className="cart-line-top">
-                  <div className="cart-name">{line.productName}</div>
-                  <button className="cart-rm" onClick={() => removeLine(line.productId)} title="O'chirish">
-                    ×
-                  </button>
-                </div>
-                <div className="cart-line-mid">
-                  <div className="qty-ctl">
-                    <button onClick={() => updateQty(line.productId, -1)} disabled={line.quantity <= 1}>−</button>
-                    <input
-                      className="qty-input num"
-                      value={line.quantity}
-                      onChange={(e) => setQty(line.productId, e.target.value)}
-                      inputMode="decimal"
-                    />
-                    <button
-                      onClick={() => updateQty(line.productId, 1)}
-                      disabled={line.quantity >= line.stockRemaining}
-                    >+</button>
+            {Array.from(cart.values()).map((line) => {
+              const isPack = line.saleMode === 'PACK' && line.packSize > 0;
+              const canPack = line.packSize > 0 && line.packPrice > 0;
+              const displayCount = isPack ? line.quantity / line.packSize : line.quantity;
+              const displayPrice = isPack ? line.packPrice : line.unitPrice;
+              const unitLabel = isPack ? (line.packUnit || 'pachka') : (UNIT_LABEL[line.unit] ?? line.unit);
+              return (
+                <div className="cart-line" key={line.productId}>
+                  <div className="cart-line-top">
+                    <div className="cart-name">{line.productName}</div>
+                    <button className="cart-rm" onClick={() => removeLine(line.productId)} title="O'chirish">
+                      ×
+                    </button>
                   </div>
-                  <span className="x">×</span>
-                  <input
-                    className="price-input num"
-                    value={formatThousands(line.unitPrice)}
-                    onChange={(e) => setPrice(line.productId, e.target.value)}
-                    inputMode="numeric"
-                  />
+                  {canPack && (
+                    <div className="mode-seg">
+                      <button
+                        className={!isPack ? 'active' : ''}
+                        onClick={() => setMode(line.productId, 'PIECE')}
+                      >
+                        {UNIT_LABEL[line.unit] ?? line.unit}
+                      </button>
+                      <button
+                        className={isPack ? 'active' : ''}
+                        onClick={() => setMode(line.productId, 'PACK')}
+                      >
+                        {line.packUnit || 'pachka'}
+                      </button>
+                    </div>
+                  )}
+                  <div className="cart-line-mid">
+                    <div className="qty-ctl">
+                      <button onClick={() => updateQty(line.productId, -1)} disabled={displayCount <= 1}>−</button>
+                      <input
+                        className="qty-input num"
+                        value={displayCount}
+                        onChange={(e) => setQty(line.productId, e.target.value)}
+                        inputMode="decimal"
+                      />
+                      <button
+                        onClick={() => updateQty(line.productId, 1)}
+                        disabled={line.quantity >= maxBaseQty(line)}
+                      >+</button>
+                    </div>
+                    <span className="unit-tag">{unitLabel}</span>
+                    <span className="x">×</span>
+                    <input
+                      className="price-input num"
+                      value={formatThousands(displayPrice)}
+                      onChange={(e) => setPrice(line.productId, e.target.value)}
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div className="cart-line-total num">
+                    = {money(lineTotalOf(line), false)}
+                  </div>
                 </div>
-                <div className="cart-line-total num">
-                  = {money(line.quantity * line.unitPrice, false)}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {cart.size > 0 && (
@@ -671,6 +754,22 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           font-size: 12.5px;
         }
         .cart-line-mid .x { color: var(--ink-faint); padding: 0 2px; }
+        .mode-seg {
+          display: inline-flex; gap: 2px;
+          background: var(--paper-2); border: 1px solid var(--line); border-radius: 7px; padding: 2px;
+          align-self: flex-start;
+        }
+        .mode-seg button {
+          border: none; background: transparent; cursor: pointer;
+          font-family: inherit; font-size: 11px; font-weight: 600; color: var(--ink-soft);
+          padding: 3px 9px; border-radius: 5px;
+        }
+        .mode-seg button:hover { color: var(--ink); }
+        .mode-seg button.active { background: var(--accent); color: var(--paper-2); }
+        .unit-tag {
+          font-size: 11px; color: var(--ink-soft); font-weight: 600;
+          white-space: nowrap;
+        }
         .price-input {
           flex: 1; min-width: 0;
           height: 28px; padding: 0 8px;

@@ -8,7 +8,7 @@ export class UpdateBatchDto {
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
-  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   costPricePerUnit?: number;
 
@@ -18,6 +18,13 @@ export class UpdateBatchDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   salePricePerUnit?: number;
+
+  @ApiPropertyOptional({ description: 'Butun pachka sotuv narxi (override)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  packSalePrice?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

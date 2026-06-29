@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PaymentType } from '@prisma/client';
+import { PaymentType, SaleMode } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -22,17 +22,36 @@ export class CreateSaleItemDto {
   @IsPositive()
   productId!: number;
 
-  @ApiProperty({ example: 5, description: 'Miqdor (baseUnit da)' })
+  @ApiProperty({ example: 5, description: 'Miqdor — HAR DOIM baseUnit da (FIFO uchun). Pachkada = packCount × packSize' })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0.001)
   quantity!: number;
 
-  @ApiProperty({ example: 280000 })
+  @ApiProperty({ example: 280000, description: 'Dona narxi (baseUnit uchun). PACK rejimida ko\'rsatish uchun, summa packPrice dan hisoblanadi' })
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   unitPrice!: number;
+
+  @ApiPropertyOptional({ enum: SaleMode, default: SaleMode.PIECE, description: 'Sotuv usuli: dona (PIECE) yoki butun pachka (PACK)' })
+  @IsOptional()
+  @IsEnum(SaleMode)
+  saleMode?: SaleMode;
+
+  @ApiPropertyOptional({ example: 1, description: 'PACK bo\'lsa: nechta pachka' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  packCount?: number;
+
+  @ApiPropertyOptional({ example: 280000, description: 'PACK bo\'lsa: bitta butun pachka narxi (aniq summa shu dan hisoblanadi)' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  packPrice?: number;
 }
 
 export class CreateSaleDto {

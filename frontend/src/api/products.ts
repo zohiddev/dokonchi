@@ -32,8 +32,10 @@ export interface CreateProductPayload {
   categoryId: number;
   baseUnit: Unit;
   packSize?: number | null;
+  packUnit?: string | null;
   barcode?: string | null;
   defaultSalePrice?: number | null;
+  packSalePrice?: number | null;
 }
 
 export function useCreateProduct() {

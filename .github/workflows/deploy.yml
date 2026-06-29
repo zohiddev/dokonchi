@@ -9,8 +9,9 @@ on:
       - main
 
 env:
-  # CapRover server URL (domen olganda shu yerni yangilang)
-  CAPROVER_HOST: http://captain.185.182.184.190.nip.io
+  # CapRover panel URL. MUHIM: CapRover'da root domain dokonchiapp.uz ga
+  # o'zgartirilgandan KEYIN bu qator amal qiladi (panel captain.<root> da bo'ladi).
+  CAPROVER_HOST: https://captain.dokonchiapp.uz
 
 jobs:
   # 1) Qaysi papka o'zgarganini aniqlaymiz
