@@ -49,6 +49,12 @@ export function CardHead({
         .card-head-text { flex: 1; min-width: 0; }
         .card-head h3 { font-size: 17px; font-weight: 600; color: var(--ink); }
         .card-head small { font-size: 12.5px; color: var(--ink-soft); }
+        /* Mobile: sarlavha/izoh va filter bir qatorga sig'masa — ustma-ust */
+        @media (max-width: 640px) {
+          .card-head { flex-direction: column; align-items: stretch; gap: 10px; }
+          .card-head-right { overflow-x: auto; }
+          .card-head-right .filter-tabs { display: flex; }
+        }
       `}</style>
     </div>
   );

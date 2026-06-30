@@ -136,6 +136,7 @@ model Customer {
   createdAt   DateTime      @default(now())
   sales       Sale[]
   payments    DebtPayment[]
+  debtCharges DebtCharge[]
 }
 
 model Sale {
@@ -186,6 +187,21 @@ model DebtPayment {
   amount      Decimal  @db.Decimal(14, 2)
   paymentDate DateTime @default(now())
   notes       String?
+}
+
+// Qo'lda qo'shilgan eski/oldingi qarz — appdan tashqari kelishuv yoki o'tmishdagi qarz.
+// openingDebt kabi qarz balansini oshiradi, lekin har biri alohida sana+izoh bilan saqlanadi.
+// Pul harakati emas — kassaga/hisobotga ta'sir qilmaydi.
+model DebtCharge {
+  id          Int      @id @default(autoincrement())
+  customerId  Int
+  customer    Customer @relation(fields: [customerId], references: [id])
+  amount      Decimal  @db.Decimal(14, 2)
+  chargeDate  DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([customerId])
 }
 
 // Ta'minotchiga to'lov — yetkazma qo'shilganda (boshlang'ich) yoki keyin alohida.

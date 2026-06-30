@@ -366,6 +366,42 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
               );
             })}
           </div>
+
+          {/* Mobile: katalog o'rniga faqat qidiruv natijalari ro'yxati */}
+          <div className="msearch">
+            {search.trim() === '' ? (
+              <div className="msearch-hint">Qo'shish uchun mahsulot nomini yozing</div>
+            ) : inventory.isLoading ? (
+              <div className="msearch-hint"><Spinner /></div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="msearch-hint">Mahsulot topilmadi</div>
+            ) : (
+              filteredProducts.map((p) => {
+                const stockN = Number(p.totalRemaining);
+                const outOfStock = stockN <= 0;
+                const inCart = cart.get(p.productId);
+                return (
+                  <button
+                    key={p.productId}
+                    className={`msearch-item ${outOfStock ? 'out' : ''}`}
+                    onClick={() => addToCart(p)}
+                    disabled={outOfStock}
+                  >
+                    <span className="msearch-name">
+                      {p.name}
+                      {inCart && <span className="msearch-incart"> · savatda {inCart.quantity}</span>}
+                    </span>
+                    <span className="msearch-meta">
+                      <span className="num">{p.currentSalePrice ? money(p.currentSalePrice, false) : '—'}</span>
+                      <small className={outOfStock ? 'no' : ''}>
+                        {outOfStock ? "qoldiq yo'q" : `${qtyFmt(stockN, p.baseUnit)} mavjud`}
+                      </small>
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
 
         {/* ===== O'NG: Savat + FIFO + To'lov ===== */}
@@ -570,6 +606,28 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
         @media (max-width: 900px) {
           .pos { grid-template-columns: 1fr; }
         }
+
+        /* Mobile: katalog grid'i va kategoriya tablari o'rniga faqat qidiruv ro'yxati */
+        .msearch { display: none; }
+        .msearch-hint {
+          padding: 18px; text-align: center; color: var(--ink-faint);
+          font-size: 13px; border: 1px dashed var(--line-strong); border-radius: 11px;
+        }
+        .msearch-item {
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          padding: 11px 13px; background: var(--card); border: 1px solid var(--line);
+          border-radius: 10px; cursor: pointer; font-family: inherit; text-align: left; width: 100%;
+        }
+        .msearch-item:hover:not(:disabled) { border-color: var(--accent); }
+        .msearch-item.out { opacity: .5; cursor: not-allowed; }
+        .msearch-name { font-size: 13.5px; font-weight: 600; color: var(--ink); min-width: 0; }
+        .msearch-incart { color: var(--accent); font-weight: 600; font-size: 12px; }
+        .msearch-meta {
+          display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+          font-size: 13px; color: var(--green); font-weight: 600; white-space: nowrap; flex-shrink: 0;
+        }
+        .msearch-meta small { font-size: 10.5px; color: var(--ink-soft); font-weight: 400; }
+        .msearch-meta small.no { color: var(--brick); }
 
         .pos-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
         .search-bar {
@@ -907,6 +965,13 @@ export function NewSaleModal({ open, onClose }: NewSaleModalProps) {
           box-shadow: none; cursor: not-allowed;
         }
         .save strong { font-size: 15px; }
+
+        /* Mobile: katalog grid/tablari yashirin — faqat qidiruv ro'yxati.
+           (Baza .grid/.cat-pills qoidalaridan KEYIN turishi shart — aks holda bekor bo'ladi) */
+        @media (max-width: 640px) {
+          .cat-pills, .grid { display: none; }
+          .msearch { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+        }
       `}</style>
     </Modal>
   );

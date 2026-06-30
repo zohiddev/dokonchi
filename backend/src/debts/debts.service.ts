@@ -3,6 +3,7 @@ import { PaymentType, Prisma } from '@prisma/client';
 import { CustomersService } from '../customers/customers.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { CreateDebtChargeDto } from './dto/create-debt-charge.dto';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 
 const D = Prisma.Decimal;
@@ -22,6 +23,7 @@ export class DebtsService {
         OR: [
           { sales: { some: { paymentType: PaymentType.NASIYA } } },
           { openingDebt: { gt: 0 } },
+          { debtCharges: { some: {} } },
         ],
       },
       orderBy: { name: 'asc' },
@@ -75,11 +77,33 @@ export class DebtsService {
     return { payment, balance };
   }
 
+  // Qo'lda eski/oldingi qarz qo'shish — pul harakati emas, faqat qarz balansini oshiradi.
+  async createCharge(dto: CreateDebtChargeDto) {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: dto.customerId },
+      select: { id: true },
+    });
+    if (!customer) throw new BadRequestException('Mijoz topilmadi');
+
+    const charge = await this.prisma.debtCharge.create({
+      data: {
+        customerId: dto.customerId,
+        amount: dto.amount,
+        chargeDate: dto.chargeDate ? new Date(dto.chargeDate) : undefined,
+        notes: dto.notes ?? null,
+      },
+      include: { customer: true },
+    });
+
+    const balance = await this.customers.computeBalance(dto.customerId);
+    return { charge, balance };
+  }
+
   // Mijozning to'liq oldi-sotdi tarixi — BARCHA sotuvlar (naqd/karta/nasiya) +
   // to'lovlar. Qarz running-balance'i FAQAT nasiya sotuv va to'lovdan o'zgaradi;
   // naqd/karta xaridlar tarixda ko'rinadi, lekin qarzga ta'sir qilmaydi.
   async history(customerId: number) {
-    const [customer, sales, payments] = await Promise.all([
+    const [customer, sales, payments, charges] = await Promise.all([
       this.prisma.customer.findUnique({
         where: { id: customerId },
         select: { openingDebt: true, createdAt: true },
@@ -108,6 +132,10 @@ export class DebtsService {
       this.prisma.debtPayment.findMany({
         where: { customerId },
         orderBy: { paymentDate: 'asc' },
+      }),
+      this.prisma.debtCharge.findMany({
+        where: { customerId },
+        orderBy: { chargeDate: 'asc' },
       }),
     ]);
 
@@ -140,7 +168,16 @@ export class DebtsService {
       summary: string;
       runningBalance: Prisma.Decimal;
     };
-    type Entry = SaleEntry | PaymentEntry;
+    type ChargeEntry = {
+      type: 'charge';
+      id: number;
+      date: Date;
+      amount: Prisma.Decimal;
+      notes: string | null;
+      summary: string;
+      runningBalance: Prisma.Decimal;
+    };
+    type Entry = SaleEntry | PaymentEntry | ChargeEntry;
 
     const saleEntries: SaleEntry[] = sales.map((s) => ({
       type: 'sale',
@@ -172,8 +209,18 @@ export class DebtsService {
       runningBalance: new D(0),
     }));
 
+    const chargeEntries: ChargeEntry[] = charges.map((c) => ({
+      type: 'charge',
+      id: c.id,
+      date: c.chargeDate,
+      amount: c.amount,
+      notes: c.notes,
+      summary: c.notes ?? 'Eski qarz',
+      runningBalance: new D(0),
+    }));
+
     // Xronologik (ASC) tartibda birlashtiramiz va running balance hisoblaymiz
-    const sorted: Entry[] = [...saleEntries, ...paymentEntries].sort(
+    const sorted: Entry[] = [...saleEntries, ...paymentEntries, ...chargeEntries].sort(
       (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
@@ -200,6 +247,9 @@ export class DebtsService {
     for (const e of sorted) {
       if (e.type === 'payment') {
         running = running.minus(e.amount);
+      } else if (e.type === 'charge') {
+        // Qo'lda qo'shilgan eski qarz — qarzni oshiradi
+        running = running.plus(e.amount);
       } else if (e.paymentType === PaymentType.NASIYA) {
         running = running.plus(e.amount);
       }

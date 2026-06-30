@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDeliveries } from '../api/deliveries';
 import { useProducts } from '../api/products';
 import { useSuppliers } from '../api/suppliers';
+import { EditDeliveryModal } from '../components/EditDeliveryModal';
 import { NewDeliveryModal } from '../components/NewDeliveryModal';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -38,6 +39,7 @@ function deliveryStatus(batches: Batch[]): BatchStatus {
 
 export function BatchesPage() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Delivery | null>(null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const deliveries = useDeliveries({});
   const products = useProducts({});
@@ -156,6 +158,7 @@ export function BatchesPage() {
                   delivery={d}
                   open={expanded.has(d.id)}
                   onToggle={() => toggle(d.id)}
+                  onEdit={() => setEditing(d)}
                 />
               ))}
             </div>
@@ -171,6 +174,7 @@ export function BatchesPage() {
       </Card>
 
       <NewDeliveryModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <EditDeliveryModal delivery={editing} onClose={() => setEditing(null)} />
 
       <style>{`
         .dlist { display: flex; flex-direction: column; }
@@ -179,7 +183,7 @@ export function BatchesPage() {
   );
 }
 
-function DeliveryRow({ delivery: d, open, onToggle }: { delivery: Delivery; open: boolean; onToggle: () => void }) {
+function DeliveryRow({ delivery: d, open, onToggle, onEdit }: { delivery: Delivery; open: boolean; onToggle: () => void; onEdit: () => void }) {
   const batches = d.batches ?? [];
   const totalReceived = batches.reduce((s, b) => s + Number(b.quantityReceived), 0);
   const totalRemaining = batches.reduce((s, b) => s + Number(b.quantityRemaining), 0);
@@ -232,6 +236,11 @@ function DeliveryRow({ delivery: d, open, onToggle }: { delivery: Delivery; open
             </tbody>
           </table>
           {d.notes && <div className="dnotes">Izoh: {d.notes}</div>}
+          <div className="dactions">
+            <Button variant="ghost" size="sm" onClick={onEdit} icon={<IconEdit />}>
+              Tahrirlash
+            </Button>
+          </div>
         </div>
       )}
 
@@ -263,8 +272,17 @@ function DeliveryRow({ delivery: d, open, onToggle }: { delivery: Delivery; open
         .dbody tbody td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
         .dbody .muted { color: var(--ink-faint); margin-left: 6px; font-weight: 500; }
         .dnotes { margin-top: 10px; font-size: 12px; color: var(--ink-soft); }
+        .dactions { margin-top: 12px; display: flex; justify-content: flex-end; }
         @media (max-width: 720px) {
           .dstock { display: none; }
+        }
+        @media (max-width: 640px) {
+          /* Qator: nom/izoh tepada, qiymat + holat pastki qatorda o'ngda */
+          .dhead { flex-wrap: wrap; gap: 6px 10px; padding: 12px 14px; }
+          .dmain { flex: 1 1 60%; }
+          .dval { width: auto; margin-left: auto; }
+          .dval .num { white-space: nowrap; }
+          .dbody { padding: 4px 14px 14px 30px; }
         }
       `}</style>
     </div>
@@ -315,6 +333,15 @@ function IconPlus() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
     </svg>
   );
 }

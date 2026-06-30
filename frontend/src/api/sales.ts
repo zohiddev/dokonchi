@@ -65,3 +65,22 @@ export function useCreateSale() {
     },
   });
 }
+
+// Sotuvni vozvrat qilish (bekor + tovarni omborga qaytarish)
+export function useReturnSale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => (await api.delete(`/sales/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sales'] });
+      qc.invalidateQueries({ queryKey: ['batches'] });
+      qc.invalidateQueries({ queryKey: ['deliveries'] }); // partiya qoldig'i tiklanadi
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['debts'] });
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['cash'] });
+      qc.invalidateQueries({ queryKey: ['suppliers'] }); // ta'minotchi balansi (sotilgan→qoldiq) yangilanadi
+    },
+  });
+}

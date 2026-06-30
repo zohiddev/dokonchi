@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DeliveriesService } from './deliveries.service';
 import { CreateDeliveryDto } from './dto/create-delivery.dto';
 import { QueryDeliveriesDto } from './dto/query-deliveries.dto';
+import { UpdateDeliveryDto } from './dto/update-delivery.dto';
 
 @ApiTags('deliveries')
 @ApiBearerAuth()
@@ -26,5 +27,11 @@ export class DeliveriesController {
   @ApiOperation({ summary: 'Yangi yetkazma — bir nechta mahsulotni bitta kirimda qo\'shish' })
   create(@Body() dto: CreateDeliveryDto) {
     return this.deliveries.create(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: "Yetkazma sarlavhasini tahrirlash (ta'minotchi/sana/izoh)" })
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeliveryDto) {
+    return this.deliveries.update(id, dto);
   }
 }

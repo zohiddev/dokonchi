@@ -321,6 +321,11 @@ export function NewDeliveryModal({ open, onClose, defaultSupplierId }: Props) {
         .grand .debt { color: var(--brick); }
         .grand .debt b { color: var(--brick); }
         .actions { display: flex; gap: 8px; }
+        /* Mobile: ikki ustunli qatorlarni pastga tushiramiz, inputlar sig'sin */
+        .field input, .field select, .line-product { min-width: 0; max-width: 100%; }
+        @media (max-width: 640px) {
+          .form-row { grid-template-columns: 1fr; }
+        }
       `}</style>
     </Modal>
   );

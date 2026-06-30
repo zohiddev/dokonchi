@@ -37,6 +37,26 @@ export function usePayDebt() {
   });
 }
 
+export interface AddDebtChargePayload {
+  customerId: number;
+  amount: number;
+  chargeDate?: string; // YYYY-MM-DD — berilmasa bugun
+  notes?: string;
+}
+
+export function useAddDebtCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: AddDebtChargePayload) =>
+      (await api.post('/debts/charges', payload)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['debts'] });
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      // Eski qarz pul harakati emas — kassa/hisobotga tegmaydi
+    },
+  });
+}
+
 export interface DebtHistoryItem {
   productName: string;
   unit: string;
@@ -46,7 +66,7 @@ export interface DebtHistoryItem {
 }
 
 export interface DebtHistoryEntry {
-  type: 'sale' | 'payment';
+  type: 'sale' | 'payment' | 'charge';
   /** Sotuv yozuvlari uchun to'lov turi */
   paymentType?: 'NAQD' | 'KARTA' | 'NASIYA';
   /** Boshlang'ich (appdan oldingi) eski qarz yozug'i — xarid statistikasiga kirmaydi */

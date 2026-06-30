@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useCustomer, useCustomerBalance } from '../api/customers';
 import { useCustomerHistory, type DebtHistoryEntry } from '../api/debts';
+import { AddDebtChargeModal } from '../components/AddDebtChargeModal';
 import { BotInviteButton } from '../components/BotInviteButton';
 import { PayDebtModal } from '../components/PayDebtModal';
+import { ReturnSaleModal } from '../components/ReturnSaleModal';
 import { QuickCustomerSaleModal } from '../components/QuickCustomerSaleModal';
 import { Button } from '../components/ui/Button';
 import { Card, CardBody } from '../components/ui/Card';
@@ -23,6 +25,8 @@ export function CustomerDetailPage() {
 
   const [payOpen, setPayOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
+  const [chargeOpen, setChargeOpen] = useState(false);
+  const [toReturn, setToReturn] = useState<DebtHistoryEntry | null>(null);
 
   if (customer.isLoading) {
     return <div style={{ padding: 32, textAlign: 'center' }}><Spinner /></div>;
@@ -61,6 +65,9 @@ export function CustomerDetailPage() {
           </Button>
           <Button variant="ghost" onClick={() => setPayOpen(true)} icon={<IconReceive />}>
             Qarz to'lash
+          </Button>
+          <Button variant="ghost" onClick={() => setChargeOpen(true)} icon={<IconDebt />}>
+            Eski qarz qo'shish
           </Button>
         </div>
       </div>
@@ -157,7 +164,7 @@ export function CustomerDetailPage() {
               const cls =
                 entry.type === 'payment'
                   ? 'payment'
-                  : entry.paymentType === 'NASIYA'
+                  : entry.type === 'charge' || entry.paymentType === 'NASIYA'
                     ? 'credit'
                     : 'paid';
               return (
@@ -165,7 +172,7 @@ export function CustomerDetailPage() {
                   <div className="tl-dot" />
                   {idx < history.data!.length - 1 && <div className="tl-line" />}
                   <div className="tl-card">
-                    <HistoryEntry entry={entry} />
+                    <HistoryEntry entry={entry} onReturn={() => setToReturn(entry)} />
                   </div>
                 </li>
               );
@@ -187,6 +194,30 @@ export function CustomerDetailPage() {
         open={saleOpen}
         onClose={() => setSaleOpen(false)}
         lockedCustomer={{ id: c.id, name: c.name, phone: c.phone }}
+      />
+
+      <AddDebtChargeModal
+        customer={chargeOpen ? { id: c.id, name: c.name, balance: b?.balance } : null}
+        onClose={() => setChargeOpen(false)}
+      />
+
+      <ReturnSaleModal
+        sale={
+          toReturn && toReturn.type === 'sale' && toReturn.paymentType
+            ? {
+                id: toReturn.id,
+                date: toReturn.date,
+                amount: toReturn.amount,
+                paymentType: toReturn.paymentType,
+                customerName: c.name,
+                items: (toReturn.items ?? []).map((i) => ({
+                  name: i.productName,
+                  quantity: i.quantity,
+                })),
+              }
+            : null
+        }
+        onClose={() => setToReturn(null)}
       />
 
       <style>{`
@@ -260,8 +291,17 @@ export function CustomerDetailPage() {
         }
         .kpi.big button { margin-top: 8px; }
         @media (max-width: 640px) {
-          .kpi-strip { grid-template-columns: 1fr 1fr; }
+          .kpi-strip { grid-template-columns: 1fr 1fr; gap: 12px; }
           .kpi.big { grid-column: 1 / -1; }
+          /* Katta serif raqamlar mobil ustunga sig'sin */
+          .kpi strong { font-size: 17px; overflow-wrap: anywhere; }
+          .kpi.big strong { font-size: 21px; }
+          /* Sarlavha va holat bloki — pastga, chapga tekislangan */
+          .head-row { flex-direction: column; gap: 12px; }
+          .head-status { align-items: flex-start; width: 100%; }
+          .head-status .tg-hint { text-align: left; max-width: none; }
+          .cd-actions { width: 100%; }
+          .cd-actions > * { flex: 1 1 auto; justify-content: center; }
         }
 
         /* Timeline */
@@ -314,7 +354,16 @@ function IconReceive() {
   );
 }
 
-function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
+function IconDebt() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1v22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+function HistoryEntry({ entry, onReturn }: { entry: DebtHistoryEntry; onReturn: () => void }) {
   if (entry.type === 'sale') {
     // Faqat nasiya (va eski qarz) qarz qoldig'iga ta'sir qiladi
     const affectsDebt = !!entry.isOpening || entry.paymentType === 'NASIYA';
@@ -370,11 +419,18 @@ function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
 
         {entry.notes && <p className="he-notes">{entry.notes}</p>}
 
+        {!entry.isOpening && (
+          <div className="he-actions">
+            <Button variant="ghost" size="sm" onClick={onReturn}>Vozvrat</Button>
+          </div>
+        )}
+
         <style>{`
           .he-head {
             display: flex; justify-content: space-between; align-items: start;
             gap: 10px; margin-bottom: 10px;
           }
+          .he-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
           .he-head > div:first-child {
             display: flex; flex-direction: column; gap: 5px;
             align-items: start;
@@ -413,6 +469,53 @@ function HistoryEntry({ entry }: { entry: DebtHistoryEntry }) {
             font-size: 12px; color: var(--ink-soft);
             font-style: italic;
           }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (entry.type === 'charge') {
+    return (
+      <div>
+        <div className="he-head">
+          <div>
+            <Tag tone="brick">📝 Eski qarz</Tag>
+            <span className="he-date num">{dateTime(entry.date)}</span>
+          </div>
+          <strong className="num he-amt" style={{ color: 'var(--brick)' }}>
+            + {money(entry.amount)}
+          </strong>
+        </div>
+        {entry.notes && <p className="he-notes">{entry.notes}</p>}
+        <div className="he-footer">
+          <small></small>
+          <small className="balance">
+            Qarz: <strong className="num">{money(entry.runningBalance, false)}</strong>
+          </small>
+        </div>
+
+        <style>{`
+          .he-head {
+            display: flex; justify-content: space-between; align-items: start;
+            gap: 10px; margin-bottom: 8px;
+          }
+          .he-head > div:first-child {
+            display: flex; flex-direction: column; gap: 5px;
+            align-items: start;
+          }
+          .he-date { font-size: 11.5px; color: var(--ink-soft); }
+          .he-amt { font-size: 16px; font-weight: 700; }
+          .he-notes {
+            font-size: 12.5px; color: var(--ink-soft);
+            margin-bottom: 8px;
+          }
+          .he-footer {
+            display: flex; justify-content: space-between; align-items: baseline;
+            padding-top: 8px;
+            border-top: 1px dashed var(--line);
+          }
+          .he-footer small { font-size: 11.5px; color: var(--ink-soft); }
+          .he-footer .balance strong { color: var(--brick); font-weight: 700; }
         `}</style>
       </div>
     );

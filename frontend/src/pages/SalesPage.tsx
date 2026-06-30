@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { FilterBar, FilterSelect, SearchableSelect, DateRangeField, type SelectOption } from '../components/ui/Filters';
 import { Pagination } from '../components/ui/Pagination';
 import { PaymentTag } from '../components/ui/Tag';
+import { ReturnSaleModal } from '../components/ReturnSaleModal';
 import { useNewSale } from '../components/NewSaleContext';
 import { dateTime, money } from '../lib/format';
 import type { PaymentType, Sale } from '../types/api';
@@ -22,6 +23,7 @@ export function SalesPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [page, setPage] = useState(1);
+  const [toReturn, setToReturn] = useState<Sale | null>(null);
 
   const hasFilter = !!(payFilter || customerId || from || to);
   const reset1 = <T,>(setter: (v: T) => void) => (v: T) => { setter(v); setPage(1); };
@@ -109,6 +111,21 @@ export function SalesPage() {
       align: 'right',
       width: '160px',
     },
+    {
+      key: 'actions',
+      header: '',
+      render: (s) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setToReturn(s)}
+        >
+          Vozvrat
+        </Button>
+      ),
+      align: 'right',
+      width: '110px',
+    },
   ];
 
   return (
@@ -166,6 +183,25 @@ export function SalesPage() {
           pageSize={PAGE_SIZE}
         />
       </Card>
+
+      <ReturnSaleModal
+        sale={
+          toReturn
+            ? {
+                id: toReturn.id,
+                date: toReturn.saleDate,
+                amount: toReturn.totalAmount,
+                paymentType: toReturn.paymentType,
+                customerName: toReturn.customer?.name,
+                items: (toReturn.items ?? []).map((i) => ({
+                  name: i.product?.name ?? '—',
+                  quantity: i.quantity,
+                })),
+              }
+            : null
+        }
+        onClose={() => setToReturn(null)}
+      />
     </div>
   );
 }

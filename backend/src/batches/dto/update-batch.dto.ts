@@ -2,9 +2,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
-// Partiyani yaratgandan keyin faqat narx va izohni tahrirlash mumkin.
-// Sotilgan miqdorga ta'sir qilmaydi.
+// Partiyani yaratgandan keyin narx/izoh va kelgan miqdorni tahrirlash mumkin.
+// quantityReceived o'zgarsa qoldiq (quantityRemaining) sotilgan miqdorni saqlagan holda moslashadi.
 export class UpdateBatchDto {
+  @ApiPropertyOptional({ example: 50, description: 'Kelgan miqdor (baseUnit). Sotilganidan kam bo\'lishi mumkin emas' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  quantityReceived?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Number)
