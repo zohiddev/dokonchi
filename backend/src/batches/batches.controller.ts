@@ -45,7 +45,7 @@ export class BatchesController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: "Tahrirlash (faqat narx/izoh; sotilgan miqdorga tegmaydi)" })
+  @ApiOperation({ summary: "Tahrirlash (kelgan miqdor, narx, izoh; sotilgan miqdor saqlanadi)" })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBatchDto) {
     return this.batches.update(id, dto);
   }

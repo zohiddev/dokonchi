@@ -53,3 +53,28 @@ export function useCreateBatch() {
     },
   });
 }
+
+// Partiyani tahrirlash: kelgan miqdor + narxlar + izoh. Sotilgan miqdor saqlanadi.
+export interface UpdateBatchPayload {
+  quantityReceived?: number;
+  costPricePerUnit?: number;
+  salePricePerUnit?: number;
+  packSalePrice?: number;
+  notes?: string;
+}
+
+export function useUpdateBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: UpdateBatchPayload }) =>
+      (await api.patch<Batch>(`/batches/${id}`, payload)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['batches'] });
+      qc.invalidateQueries({ queryKey: ['deliveries'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['suppliers'] });
+      qc.invalidateQueries({ queryKey: ['cash'] });
+    },
+  });
+}

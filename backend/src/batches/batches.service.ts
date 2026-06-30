@@ -169,8 +169,22 @@ export class BatchesService {
   }
 
   async update(id: number, dto: UpdateBatchDto) {
-    await this.findOne(id);
+    const batch = await this.findOne(id);
     const data: Prisma.BatchUpdateInput = {};
+
+    if (dto.quantityReceived !== undefined) {
+      // Sotilgan miqdorni saqlab, qoldiqni yangi kelgan miqdorga moslaymiz
+      const sold = new Prisma.Decimal(batch.quantityReceived).minus(batch.quantityRemaining);
+      const newReceived = new Prisma.Decimal(dto.quantityReceived);
+      if (newReceived.lt(sold)) {
+        throw new BadRequestException(
+          `Kelgan miqdor sotilganidan (${sold.toString()}) kam bo'lishi mumkin emas`,
+        );
+      }
+      data.quantityReceived = newReceived;
+      data.quantityRemaining = newReceived.minus(sold);
+    }
+
     if (dto.costPricePerUnit !== undefined) data.costPricePerUnit = dto.costPricePerUnit;
     if (dto.salePricePerUnit !== undefined) data.salePricePerUnit = dto.salePricePerUnit;
     if (dto.packSalePrice !== undefined) data.packSalePrice = dto.packSalePrice;

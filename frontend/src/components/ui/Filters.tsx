@@ -32,6 +32,17 @@ export function FilterBar({ children, action }: { children: ReactNode; action?: 
           flex: 1; min-width: 0;
         }
         .fb-action { flex-shrink: 0; }
+        /* Mobile: filtrlar va amal tugmasi to'liq kenglikda ustma-ust */
+        @media (max-width: 640px) {
+          .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+          .fb-controls { flex-direction: column; align-items: stretch; }
+          .fb-controls > * { width: 100% !important; max-width: none !important; }
+          .fb-action { order: -1; }
+          .fb-action > * { width: 100%; }
+          .fb-controls .ssel-trigger,
+          .fb-controls .drp,
+          .fb-controls .drp-trigger { width: 100%; max-width: none; }
+        }
       `}</style>
     </div>
   );
@@ -250,10 +261,11 @@ export function SearchableSelect({
           font-family: inherit; font-size: 13px; color: var(--ink);
         }
         .ssel-list { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; padding: 4px; }
-        .ssel-empty { padding: 18px 12px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+        .ssel-empty { padding: 18px 12px; text-align: center; color: var(--ink-soft); font-size: 13px; flex-shrink: 0; }
         .ssel-item {
+          flex-shrink: 0;
           text-align: left; padding: 9px 11px; border: none; background: none;
-          color: var(--ink); font-size: 13px; cursor: pointer; border-radius: 7px;
+          color: var(--ink); font-size: 13px; line-height: 1.4; cursor: pointer; border-radius: 7px;
           font-family: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .ssel-item:hover { background: var(--paper-2); }

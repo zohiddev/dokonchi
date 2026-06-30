@@ -51,3 +51,26 @@ export function useCreateDelivery() {
     },
   });
 }
+
+// Yetkazma sarlavhasi (ta'minotchi/sana/izoh). supplierId: null = ta'minotchini olib tashlash
+export interface UpdateDeliveryPayload {
+  supplierId?: number | null;
+  receivedDate?: string; // YYYY-MM-DD (ISO)
+  notes?: string;
+}
+
+export function useUpdateDelivery() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: UpdateDeliveryPayload }) =>
+      (await api.patch<Delivery>(`/deliveries/${id}`, payload)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['deliveries'] });
+      qc.invalidateQueries({ queryKey: ['batches'] });
+      qc.invalidateQueries({ queryKey: ['inventory'] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['suppliers'] }); // ta'minotchi qarzi ko'chadi
+      qc.invalidateQueries({ queryKey: ['cash'] });
+    },
+  });
+}

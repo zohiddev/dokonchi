@@ -479,6 +479,12 @@ export function QuickCustomerSaleModal({ open, onClose, lockedCustomer }: Props)
         .price-input:focus { border-color: var(--accent); }
         .qsale-line-total {
           flex: 1; text-align: right; font-size: 13px; font-weight: 700; color: var(--green);
+          white-space: nowrap;
+        }
+        /* Mobile: summa qatorga sig'masa, raqam bo'linmasin — alohida qatorga tushsin */
+        @media (max-width: 640px) {
+          .qsale-line-ctl { flex-wrap: wrap; }
+          .qsale-line-total { flex-basis: 100%; }
         }
 
         .paybar {

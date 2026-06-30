@@ -167,17 +167,45 @@ export function ExpensesPage() {
         {hasFilter && <Button variant="ghost" size="sm" onClick={clearAll}>Tozalash</Button>}
       </FilterBar>
 
-      <Card padding={false}>
-        <DataTable
-          columns={columns}
-          data={filtered}
-          rowKey={(e) => e.id}
-          isLoading={expenses.isLoading}
-          emptyTitle="Xarajat yo'q"
-          emptyDescription={hasFilter ? 'Filtrga mos xarajat topilmadi' : 'Bu oyda xarajat qayd etilmagan'}
-          resetKey={`${month}|${search}|${category}`}
-        />
-      </Card>
+      {/* Desktop: jadval */}
+      <div className="exp-table">
+        <Card padding={false}>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            rowKey={(e) => e.id}
+            isLoading={expenses.isLoading}
+            emptyTitle="Xarajat yo'q"
+            emptyDescription={hasFilter ? 'Filtrga mos xarajat topilmadi' : 'Bu oyda xarajat qayd etilmagan'}
+            resetKey={`${month}|${search}|${category}`}
+          />
+        </Card>
+      </div>
+
+      {/* Mobile: karta-ro'yxat */}
+      <div className="exp-cards">
+        {expenses.isLoading ? (
+          <Card><CardBody><div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 13 }}>Yuklanmoqda...</div></CardBody></Card>
+        ) : filtered.length === 0 ? (
+          <Card><CardBody><div style={{ textAlign: 'center', color: 'var(--ink-soft)', fontSize: 13 }}>
+            {hasFilter ? 'Filtrga mos xarajat topilmadi' : 'Bu oyda xarajat qayd etilmagan'}
+          </div></CardBody></Card>
+        ) : (
+          filtered.map((e) => (
+            <div className="exp-card" key={e.id}>
+              <div className="exp-card-top">
+                <Tag tone="brick">{e.category}</Tag>
+                <span className="num exp-card-amt">{money(e.amount)}</span>
+              </div>
+              <div className="exp-card-bot">
+                <span className="num exp-card-date">{date(e.expenseDate, true)}</span>
+                {e.notes && <span className="exp-card-note">{e.notes}</span>}
+                <button className="exp-card-del" onClick={() => handleDelete(e)}>O'chirish</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
       <ExpenseModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
@@ -221,6 +249,35 @@ export function ExpensesPage() {
           .top-row { grid-template-columns: 1fr; }
           .top-row .left { grid-template-columns: 1fr 1fr; }
           .top-row .right { flex-direction: row; align-items: center; }
+        }
+
+        /* Mobile karta-ro'yxat (desktop'da yashirin) */
+        .exp-cards { display: none; }
+        .exp-card {
+          background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+          padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .exp-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .exp-card-amt { color: var(--brick); font-weight: 700; font-size: 15px; white-space: nowrap; }
+        .exp-card-bot {
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          font-size: 12.5px; color: var(--ink-soft);
+        }
+        .exp-card-note { flex: 1; min-width: 0; color: var(--ink-soft); }
+        .exp-card-del {
+          margin-left: auto; background: none; border: 1px solid var(--line-strong);
+          color: var(--brick); border-radius: 8px; padding: 5px 10px;
+          font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+        .exp-card-del:hover { background: var(--brick-soft); border-color: var(--brick); }
+
+        @media (max-width: 640px) {
+          .top-row .left { grid-template-columns: 1fr; }
+          .big { font-size: 22px; }
+          .top-row .right { flex-wrap: wrap; }
+          .top-row .right .month-pick-wrap { flex: 1; }
+          .exp-table { display: none; }
+          .exp-cards { display: flex; flex-direction: column; gap: 10px; }
         }
       `}</style>
     </div>

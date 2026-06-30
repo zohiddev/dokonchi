@@ -255,6 +255,33 @@ export class SalesService {
     return sale;
   }
 
+  // Sotuvni to'liq vozvrat qilish (bekor qilish): tovarlarni o'z partiyalariga qaytaradi
+  // va sotuvni o'chiradi. SaleItem/SaleItemBatch onDelete: Cascade orqali o'chadi.
+  // Kassa/qarz/hisobot — hammasi sotuvlardan jonli hisoblanadi, shu sabab avtomatik moslashadi.
+  async remove(id: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id },
+        include: { items: { include: { batches: true } } },
+      });
+      if (!sale) throw new NotFoundException('Sotuv topilmadi');
+
+      // Har bir partiyaga sotilgan miqdorni qaytaramiz
+      for (const item of sale.items) {
+        for (const alloc of item.batches) {
+          await tx.batch.update({
+            where: { id: alloc.batchId },
+            data: { quantityRemaining: { increment: alloc.quantity } },
+          });
+        }
+      }
+
+      await tx.sale.delete({ where: { id } });
+
+      return { success: true, id };
+    });
+  }
+
   /**
    * Bitta sotuv qatorini hisoblaydi. PACK rejimida summa packCount × packPrice dan
    * to'g'ridan-to'g'ri (bo'lishsiz) olinadi — shu sabab butun pachka narxi aniq yumaloq bo'ladi

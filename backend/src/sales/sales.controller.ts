@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
@@ -34,5 +34,11 @@ export class SalesController {
   @ApiOperation({ summary: 'Yangi sotuv (FIFO bilan, $transaction)' })
   create(@Body() dto: CreateSaleDto, @CurrentUser() user: AuthUser) {
     return this.sales.create(dto, user.id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Sotuvni vozvrat qilish (bekor + tovarni omborga qaytarish)' })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.sales.remove(id);
   }
 }

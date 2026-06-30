@@ -56,41 +56,62 @@ export class CustomersService {
   }
 
   async computeBalance(id: number): Promise<CustomerBalance> {
-    const [customer, creditAgg, paidAgg, lastCredit, lastPayment] = await Promise.all([
-      this.prisma.customer.findUnique({
-        where: { id },
-        select: { openingDebt: true, createdAt: true },
-      }),
-      this.prisma.sale.aggregate({
-        where: { customerId: id, paymentType: PaymentType.NASIYA },
-        _sum: { totalAmount: true },
-      }),
-      this.prisma.debtPayment.aggregate({
-        where: { customerId: id },
-        _sum: { amount: true },
-      }),
-      this.prisma.sale.findFirst({
-        where: { customerId: id, paymentType: PaymentType.NASIYA },
-        orderBy: { saleDate: 'desc' },
-        select: { saleDate: true },
-      }),
-      this.prisma.debtPayment.findFirst({
-        where: { customerId: id },
-        orderBy: { paymentDate: 'desc' },
-        select: { paymentDate: true },
-      }),
-    ]);
+    const [customer, creditAgg, chargeAgg, paidAgg, lastCredit, lastCharge, lastPayment] =
+      await Promise.all([
+        this.prisma.customer.findUnique({
+          where: { id },
+          select: { openingDebt: true, createdAt: true },
+        }),
+        this.prisma.sale.aggregate({
+          where: { customerId: id, paymentType: PaymentType.NASIYA },
+          _sum: { totalAmount: true },
+        }),
+        this.prisma.debtCharge.aggregate({
+          where: { customerId: id },
+          _sum: { amount: true },
+        }),
+        this.prisma.debtPayment.aggregate({
+          where: { customerId: id },
+          _sum: { amount: true },
+        }),
+        this.prisma.sale.findFirst({
+          where: { customerId: id, paymentType: PaymentType.NASIYA },
+          orderBy: { saleDate: 'desc' },
+          select: { saleDate: true },
+        }),
+        this.prisma.debtCharge.findFirst({
+          where: { customerId: id },
+          orderBy: { chargeDate: 'desc' },
+          select: { chargeDate: true },
+        }),
+        this.prisma.debtPayment.findFirst({
+          where: { customerId: id },
+          orderBy: { paymentDate: 'desc' },
+          select: { paymentDate: true },
+        }),
+      ]);
 
     const openingDebt = customer?.openingDebt ?? new D(0);
-    // Jami nasiyaga eski (boshlang'ich) qarzni ham qo'shamiz
-    const totalCredit = (creditAgg._sum.totalAmount ?? new D(0)).plus(openingDebt);
+    // Jami nasiyaga eski (boshlang'ich) qarz + qo'lda qo'shilgan eski qarzlarni ham qo'shamiz
+    const totalCredit = (creditAgg._sum.totalAmount ?? new D(0))
+      .plus(openingDebt)
+      .plus(chargeAgg._sum.amount ?? new D(0));
     const totalPaid = paidAgg._sum.amount ?? new D(0);
+
+    // Oxirgi qarz sanasi — nasiya sotuv yoki qo'lda qarzlardan eng yangisi
+    const creditDates = [lastCredit?.saleDate, lastCharge?.chargeDate].filter(
+      (d): d is Date => d != null,
+    );
+    const lastCreditDate = creditDates.length
+      ? creditDates.reduce((a, b) => (a > b ? a : b))
+      : null;
+
     return {
       customerId: id,
       totalCredit,
       totalPaid,
       balance: totalCredit.minus(totalPaid),
-      lastCreditDate: lastCredit?.saleDate ?? null,
+      lastCreditDate,
       lastPaymentDate: lastPayment?.paymentDate ?? null,
     };
   }

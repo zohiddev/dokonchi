@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { DebtsService } from './debts.service';
+import { CreateDebtChargeDto } from './dto/create-debt-charge.dto';
 import { CreateDebtPaymentDto } from './dto/create-debt-payment.dto';
 
 @ApiTags('debts')
@@ -25,6 +26,12 @@ export class DebtsController {
   @ApiOperation({ summary: "Nasiya to'lovi qabul qilish" })
   createPayment(@Body() dto: CreateDebtPaymentDto) {
     return this.debts.createPayment(dto);
+  }
+
+  @Post('charges')
+  @ApiOperation({ summary: "Qo'lda eski/oldingi qarz qo'shish" })
+  createCharge(@Body() dto: CreateDebtChargeDto) {
+    return this.debts.createCharge(dto);
   }
 
   @Get('customers/:id/history')
